@@ -142,6 +142,15 @@ config BINFMT_ZFLAT
 	help
 	  Support FLAT format compressed binaries
 
+config ARCH_HAS_BINFMT_WASM
+	bool
+
+config BINFMT_WASM
+	bool "Kernel support for Wasm binaries"
+	depends on ARCH_HAS_BINFMT_WASM
+	help
+	  Support WebAssembly format binaries.
+
 config BINFMT_MISC
 	tristate "Kernel support for MISC binaries"
 	help
