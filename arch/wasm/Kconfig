@@ -36,6 +36,8 @@ config WASM
 	select HAVE_PAGE_SIZE_4KB
 	select HAVE_PAGE_SIZE_64KB
 
+	select ARCH_HAS_BINFMT_WASM
+
 config SMP
 	bool "Symmetric Multi-Processing"
 	help
