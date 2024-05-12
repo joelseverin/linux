@@ -39,6 +39,8 @@ config WASM
 	select HAVE_PAGE_SIZE_4KB
 	select HAVE_PAGE_SIZE_64KB
 
+	select ARCH_HAS_BINFMT_WASM
+
 	# TODO: Very inefficient, replace with native stuff. Our atomic impl.
 	# of xchg and cmpxchg already supports 64-bit integers, we could use it.
 	select GENERIC_ATOMIC64
