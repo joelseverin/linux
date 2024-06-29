@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Wasm Character Devices"
+
+config HVC_WASM
+	bool "Wasm console support"
+	select HVC_DRIVER
+	help
+	  This config option enables support for a console managed by the Wasm
+	  host, for example to read printk output during boot as well as
+	  receiving user input. It works both as an earlycon and a tty. As an
+	  earlycon, very early debug logging is output. As a tty (enabled later
+	  on in the boot process), it also supports user input from the host.
+
+	  In addition to enabling this config option at build time, you also
+	  need to specify console=hvc as a parameter on the kernel command line
+	  to activate the feature at runtime. Just specifying console=hvc is
+	  enough to enable the earlycon aspects of this console driver as well.
+
+	  If you don't know what to do here, say Y.
+
+endmenu
