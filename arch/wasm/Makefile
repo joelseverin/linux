@@ -17,6 +17,7 @@ endif
 core-y += arch/wasm/kernel/
 core-y += arch/wasm/mm/
 libs-y += arch/wasm/lib/
+drivers-y += arch/wasm/drivers/
 
 define archhelp
 	echo  '* vmlinux        - Standard Wasm kernel'
