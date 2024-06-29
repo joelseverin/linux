@@ -80,4 +80,4 @@ config PGTABLE_LEVELS
 
 endmenu
 
-source "drivers/Kconfig"
+source "arch/wasm/drivers/Kconfig"

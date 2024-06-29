@@ -16,6 +16,7 @@ KCFLAGS += -D__DISABLE_EXPORTS
 core-y += arch/wasm/kernel/
 core-y += arch/wasm/mm/
 libs-y += arch/wasm/lib/
+drivers-y += arch/wasm/drivers/
 
 PHONY += bzImage
 
