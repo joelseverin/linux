@@ -38,6 +38,7 @@
 #include <linux/seq_buf.h>
 #include <linux/sys_info.h>
 #include <trace/events/error_report.h>
+#include <asm/panic.h>
 #include <asm/sections.h>
 
 #define PANIC_TIMER_STEP 100
@@ -711,6 +712,8 @@ void vpanic(const char *fmt, va_list args)
 	if ((panic_print & SYS_INFO_PANIC_CONSOLE_REPLAY) ||
 		panic_console_replay)
 		console_flush_on_panic(CONSOLE_REPLAY_ALL);
+
+	arch_panic_notify(buf);
 
 	if (!panic_blink)
 		panic_blink = no_blink;
