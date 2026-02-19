@@ -13,10 +13,15 @@ main(int argc, char **argv)
 		fprintf(stderr, "Error: input truncated\n");
 		return 1;
 	}
-	if (memcmp(ei, ELFMAG, SELFMAG) != 0) {
-		fprintf(stderr, "Error: not ELF\n");
+
+	if (memcmp(ei, "\x00" "asm", 4UL) == 0) {
+		/* Wasm (not ELF) - provide some emulation. */
+		printf("#define KERNEL_ELFCLASS ELFCLASS32\n");
+	} else if (memcmp(ei, ELFMAG, SELFMAG) != 0) {
+		fprintf(stderr, "Error: not ELF, nor Wasm\n");
 		return 1;
 	}
+
 	switch (ei[EI_CLASS]) {
 	case ELFCLASS32:
 		printf("#define KERNEL_ELFCLASS ELFCLASS32\n");

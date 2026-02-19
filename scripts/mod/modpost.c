@@ -74,6 +74,8 @@ static unsigned int nr_unresolved;
 
 #define MODULE_NAME_LEN (64 - sizeof(Elf_Addr))
 
+static void write_vmlinux_export_c_file(struct module *mod);
+
 void modpost_log(bool is_error, const char *fmt, ...)
 {
 	va_list arglist;
@@ -421,6 +423,17 @@ static int parse_elf(struct elf_info *info, const char *filename)
 		perror(filename);
 		exit(1);
 	}
+
+	/* Generate a dummy for vmlinux on Wasm. */
+	if (strcmp(filename, "vmlinux.o") == 0 &&
+	    info->size >= 4UL &&
+	    memcmp(hdr, "\x00" "asm", 4UL) == 0) {
+		struct module *mod =
+			new_module(filename, strlen(filename) - strlen(".o"));
+		write_vmlinux_export_c_file(mod);
+		exit(0);
+	}
+
 	info->hdr = hdr;
 	if (info->size < sizeof(*hdr)) {
 		/* file too small, assume this is an empty .o file */
