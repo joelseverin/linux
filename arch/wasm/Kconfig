@@ -1,0 +1,124 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Wasm-specific options"
+
+# Wasm must run on many CPUs, as a task cannot be preempted, unless terminated.
+# Each CPU becomes a thread in the host OS, and is handled by its scheduler.
+
+config WASM
+	bool
+	default y
+	# The execution model of one task per cpu mandates the below options.
+	# One CPU is kept clear of tasks to act as a tick broadcast device.
+	select SMP
+	select ARCH_NO_PREEMPT
+	select GENERIC_CLOCKEVENTS_BROADCAST
+	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
+	# Needed by NO_HZ_FULL:
+	select HAVE_VIRT_CPU_ACCOUNTING_GEN
+	select HAVE_CONTEXT_TRACKING_USER
+
+	select THREAD_INFO_IN_TASK
+	select GENERIC_SMP_IDLE_THREAD
+	select UACCESS_MEMCPY
+	select ARCH_USE_QUEUED_RWLOCKS
+	select GENERIC_CPU_DEVICES
+	select GENERIC_CSUM
+	select GENERIC_ENTRY
+	select GENERIC_HWEIGHT
+	select GENERIC_IRQ_SHOW
+	select HAVE_SYSCALL_TRACEPOINTS
+	select ARCH_HAVE_PANIC_NOTIFY
+	select ARCH_USE_BUILTIN_BSWAP
+	select ARCH_SUPPORTS_LTO_CLANG
+	select ARCH_SUPPORTS_LTO_CLANG_THIN
+
+	select HAVE_PAGE_SIZE_4KB
+	select HAVE_PAGE_SIZE_64KB
+
+config SMP
+	bool "Symmetric Multi-Processing"
+	help
+	  This enables support for systems with more than one CPU.  In the
+	  context of Wasm, every task needs one CPU, since there is no
+	  preemption and no interrupts. If you say N here, you will only ever
+	  be able to run one task. Only do this if you really know what
+	  you're doing - there is a big risk you will lock up your system.
+
+	  If you don't know what to do here, say Y.
+
+choice
+	prompt "Kernel code model"
+	help
+	  64-bit kernels support workloads with high memory demands. However,
+	  they require support for the Memory64 feature in the Wasm runtime.
+	  Note that 64-bit kernels have a higher memory footprint and that
+	  Memory64 comes with a higher runtime overhead in many runtimes.
+
+config 32BIT
+	bool "32-bit kernel"
+	help
+	  Select this option if you want to build a 32-bit kernel.
+
+config 64BIT
+	bool "64-bit kernel"
+	help
+	  Select this option if you want to build a 64-bit kernel.
+
+endchoice
+
+config HZ
+	int
+	default 100
+
+config NR_CPUS
+	int
+	range 1 8192
+	default 64
+
+config GENERIC_CSUM
+	def_bool y
+
+config GENERIC_HWEIGHT
+	def_bool y
+
+config ARCH_HAVE_PANIC_NOTIFY
+	bool
+
+config KERNEL_START
+	hex "Kernel load address"
+	default "0x00010000"
+	help
+	  Address to load the kernel at. It is useful to leave a small area
+	  at the beginning of the memory to avoid dangling NULL pointers
+	  wreaking too much havoc. Not that we have any... Just to be sure.
+
+config BOOT_MEM_PAGES
+	hex "Total number of pages to allocate when booting"
+	default "0x2000"
+	help
+	  When booting, the kernel will try to allocate a total of this many
+	  pages. It includes empty space up to KERNEL_START, vmlinux itself, any
+	  initrd the host may have loaded, and memory allocated later on.
+
+	  Curiously, Wasm limits this value to 0xFFFF on 32-bit, one page less
+	  than the theoretical maximum of 0x10000 pages for a Wasm Memory.
+
+config WASM_PAGE_SHIFT
+	int "Wasm page shift (not kernel page shift)"
+	range 12 16
+	default 16
+	help
+	   Wasm pages are defined by the standard to be 65k. However, there is a
+	   Wasm proposal (Custom Page Sizes) that could allow other sizes. Note
+	   that unless the kernel is build with MMU support it is OK to have a
+	   different WASM_PAGE_SHIFT than PAGE_SHIFT (which sets the page size
+	   as seen from within most parts of the kernel).
+
+config PGTABLE_LEVELS
+	int
+	default 2
+
+endmenu
+
+source "drivers/Kconfig"

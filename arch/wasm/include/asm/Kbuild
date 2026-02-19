@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+generic-y += asm-offsets.h
+generic-y += extable.h
+generic-y += kvm_para.h
+generic-y += qrwlock.h
+generic-y += spinlock.h
+generic-y += spinlock_types.h
+generic-y += string.h
+generic-y += tlb.h
+generic-y += user.h
+generic-y += vmlinux.lds.h

@@ -1,0 +1,73 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+
+#ifndef _ASM_WASM_PAGE_H
+#define _ASM_WASM_PAGE_H
+
+/* PAGE_SHIFT, PAGE_SIZE, ... derived from CONFIG_PAGE_SHIFT. */
+#include <vdso/page.h>
+
+#include <asm/setup.h>
+
+#ifndef __ASSEMBLER__
+
+/*
+ * Wasm pages are defined by the standard to always be 65k, but there is a
+ * Custom Page Sizes proposal that wants to change this. (Even without that
+ * proposal in effect, it's fine to have a different PAGE_SIZE (inside Linux)
+ * than the Wasm page size as long as the kernel is built without CONFIG_MMU.)
+ */
+#define WASM_PAGE_SHIFT		16
+#define WASM_PAGE_SIZE		(1UL << WASM_PAGE_SHIFT)
+
+#define clear_page(page)	memset((page), 0, PAGE_SIZE)
+#define copy_page(to,from)	memcpy((to), (from), PAGE_SIZE)
+
+#define clear_user_page(page, vaddr, pg)	clear_page(page)
+#define copy_user_page(to, from, vaddr, pg)	copy_page(to, from)
+
+/*
+ * These are used to make use of C type-checking.
+ */
+typedef struct {
+	unsigned long pte;
+} pte_t;
+typedef struct {
+	unsigned long pgd;
+} pgd_t;
+typedef struct {
+	unsigned long pgprot;
+} pgprot_t;
+typedef struct page *pgtable_t;
+
+#define pte_val(x)	((x).pte)
+#define pgd_val(x)	((x).pgd)
+#define pgprot_val(x)	((x).pgprot)
+
+#define __pte(x)	((pte_t) { (x) })
+#define __pgd(x)	((pgd_t) { (x) })
+#define __pgprot(x)	((pgprot_t) { (x) })
+
+#define PAGE_OFFSET		(0)
+#define ARCH_PFN_OFFSET		(PAGE_OFFSET >> PAGE_SHIFT)
+
+#define __va(x) ((void *)((unsigned long) (x)))
+#define __pa(x) ((unsigned long) (x))
+
+#define virt_to_pfn(kaddr)	(__pa(kaddr) >> PAGE_SHIFT)
+#define pfn_to_virt(pfn)	__va((pfn) << PAGE_SHIFT)
+
+#define virt_to_page(addr)	pfn_to_page(virt_to_pfn(addr))
+#define page_to_virt(page)	pfn_to_virt(page_to_pfn(page))
+
+#define	virt_addr_valid(kaddr)	(((void *)(kaddr) >= (void *)PAGE_OFFSET) && \
+				((void *)(kaddr) < (void *)memory_end))
+
+extern unsigned long memory_start;
+extern unsigned long memory_end;
+
+#include <asm-generic/memory_model.h>
+#include <asm-generic/getorder.h>
+
+#endif
+
+#endif /* _ASM_WASM_PAGE_H */
