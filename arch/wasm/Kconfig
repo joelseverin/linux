@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Wasm-specific options"
+
+# Wasm must run on many CPUs, as a task cannot be preempted, unless terminated.
+# Each CPU becomes a thread in the host OS, and is handled by its scheduler.
+
+config WASM
+	bool
+	default y
+	# The execution model of one task per cpu mandates the below options.
+	# One CPU is kept clear of tasks to act as a tick broadcast device.
+	select SMP
+	# PREEMPTION and PREEMPT_COUNT is not set, disallowing kernel preemption
+	select ARCH_NO_PREEMPT
+	select GENERIC_CLOCKEVENTS_BROADCAST
+	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
+	# Needed by NO_HZ_FULL:
+	select HAVE_VIRT_CPU_ACCOUNTING_GEN
+	# TODO: Check that we comply with the user tracking requirements!
+	select HAVE_CONTEXT_TRACKING_USER
+
+	select NO_IP
+	select THREAD_INFO_IN_TASK
+	select GENERIC_SMP_IDLE_THREAD
+	select UACCESS_MEMCPY
+	select ARCH_USE_QUEUED_RWLOCKS
+	select GENERIC_CPU_DEVICES
+	select GENERIC_CSUM
+	select GENERIC_ENTRY
+	select GENERIC_HWEIGHT
+	select GENERIC_IRQ_SHOW
+	select HAVE_SYSCALL_TRACEPOINTS
+	select ARCH_HAVE_PANIC_NOTIFY
+	select ARCH_USE_BUILTIN_BSWAP
+	select ARCH_SUPPORTS_LTO_CLANG
+	select ARCH_SUPPORTS_LTO_CLANG_THIN
+
+	select HAVE_PAGE_SIZE_4KB
+	select HAVE_PAGE_SIZE_64KB
+
+	# TODO: Very inefficient, replace with native stuff. Our atomic impl.
+	# of xchg and cmpxchg already supports 64-bit integers, we could use it.
+	select GENERIC_ATOMIC64
+
+config SMP
+	bool "Symmetric Multi-Processing"
+	help
+	  This enables support for systems with more than one CPU.  In the
+	  context of Wasm, every task needs one CPU, since there is no
+	  preemption and no interrupts. If you say N here, you will only ever
+	  be able to run one task. Only do this if you really know what
+	  you're doing - there is a big risk you will lock up your system.
+
+	  If you don't know what to do here, say Y.
+
+config HZ
+	int
+	default 100
+
+config NR_CPUS
+	int
+	range 1 8192
+	default 64
+
+config GENERIC_CSUM
+	def_bool y
+
+config GENERIC_HWEIGHT
+	def_bool y
+
+config ARCH_HAVE_PANIC_NOTIFY
+	bool
+
+config PGTABLE_LEVELS
+	int
+	default 2
+
+endmenu
+
+source "drivers/Kconfig"

@@ -1,0 +1,110 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+
+.globaltype __stack_pointer, i32
+
+.functype start_kernel() -> ()
+.functype start_secondary() -> ()
+
+/* vmlinux entrypoint */
+.globl _start
+_start:
+	.functype _start() -> ()
+	.local i32 /* alloc_limit */
+
+	/*
+	 * init_task resides just after the start of the stack. Higher addresses
+	 * contain task_struct init_task data, while the stack grows downwards.
+	 *
+	 * The initial stack needs to be 16-byte aligned when calling C code.
+	 * init_task already has a much higher alignment (by L1_CACHE_BYTES).
+	 */
+	i32.const init_task
+	global.set __stack_pointer
+
+	/* Save static memory used by vmlinux. */
+	i32.const memory_start
+	i32.const 0x10000 /* The first page is reserved for trapping nullptr. */
+	i32.store 0
+	i32.const memory_kernel_break
+	memory.size 0
+	i32.const 0x10000 /* Multiply by Wasm page size (65k). */
+	i32.mul
+	i32.store 0
+
+	/*
+	 * By some trial-and-error in Firefox and (mostly) Chromium:
+	 * * Allocating the full address space (4 GB) works most of the time.
+	 * * Allocating 4 GB fails often enough to be unstable. Curiously, it
+	 *   does not seem to have anything to do with free memory, and just
+	 *   reloading the page fixes it. Waiting a bit might be beneficial.
+	 * * Doing it from within Wasm seems to succeed more often(?).
+	 * * Allocating it in one go works better than stepping, as below, and
+	 *   would allow 4 GB. But stepping is more reliable.
+	 * * Stepping all the way from 4 GB makes Chromium accept the allocation
+	 *   soon enough, but then crash with SIGILL, probably because of OOM.
+	 * * Stepping from 500 MB is a tradeoff with all things considered. It
+	 *   ought indeed to be enough for anybody! (Oh, old joke, sorry...)
+	 *
+	 * Considering the above heuristics, a fair approach seems to start high
+	 * and aggressively step downwards, one page at a time. But not too high
+	 * or there will be OOM troubles related to current default browser
+	 * settings. Sadly, browsers don't seem to handle this in a very well
+	 * defined way, and we have to be moderately aggressive. An even more
+	 * aggressive approach that surprisingly works is to try again and again
+	 * with the same allocation size, but stepping almost achieves that.
+	 *
+	 * Whatever happens, the memory is zero-initialized and hopefully
+	 * overcommitted by the host OS. If it is not, that should be fixed!
+	 * Even better would be MMU support in Wasm, and this problem would be
+	 * solved altogether. And a whole slew of other problems too!
+	 *
+	 * Note that we cannot allocate the last page from within Wasm (even
+	 * though it is possible from the JavaScript host to create a Memory
+	 * with initial: 0x10000, memory.grow only allows us to get to 0xFFFF).
+	 * This is not too bad, as this is almost like not placing anything in
+	 * the first page to catch null pointers. This guards underflow instead.
+	 */
+	i32.const 0x2000 /* Immediately decremented by 1 in the loop below. */
+	memory.size 0 /* Returns the current number of pages. */
+	i32.sub /* Try grow by the difference, (max - curr). */
+	local.set 0
+	loop
+		local.get 0
+		i32.const 1
+		i32.sub
+		local.tee 0
+
+		memory.grow 0
+		i32.const -1 /* Check if allocation failed (returned -1). */
+		i32.eq
+		br_if 0
+	end_loop
+
+	block
+		local.get 0
+		i32.const 16
+		i32.lt_u
+		br_if 0
+
+		i32.const memory_end
+		memory.size 0
+		i32.const 0x10000 /* Multiply by Wasm page size (65k). */
+		i32.mul
+		i32.store 0
+
+		call start_kernel /* Start the kernel! */
+	end_block
+
+	/* If we ever get here, the memory allocation failed. */
+	end_function
+
+.globl _start_secondary
+_start_secondary:
+	.functype _start_secondary(i32) -> ()
+	local.get 0
+	global.set __stack_pointer
+	call start_secondary
+	/* start_secondary should never return. */
+	unreachable
+
+	end_function
