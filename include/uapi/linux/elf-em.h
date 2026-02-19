@@ -52,6 +52,7 @@
 #define EM_BPF		247	/* Linux BPF - in-kernel virtual machine */
 #define EM_CSKY		252	/* C-SKY */
 #define EM_LOONGARCH	258	/* LoongArch */
+#define EM_WASM		264	/* WebAssembly (Wasm) */
 #define EM_FRV		0x5441	/* Fujitsu FR-V */
 
 /*
