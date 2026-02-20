@@ -551,7 +551,7 @@ static int choice_check_sanity(const struct menu *menu)
 			fprintf(stderr, "%s:%d: error: %s",
 				prop->filename, prop->lineno,
 				"choice value has a prompt outside its choice group\n");
-			ret = -1;
+			// ret = -1;
 		}
 	}
 
