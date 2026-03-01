@@ -46,15 +46,15 @@ static int create_wasm_tables(struct linux_binprm *bprm, unsigned long arg_start
 	const struct cred *cred = current_cred();
 
 	// We emulate common ELF auxillary vectors to help userland out a bit.
-	const u32 wasm_auxv[] = {
-		AT_NOTELF, 1U,
+	const unsigned long wasm_auxv[] = {
+		AT_NOTELF, 1UL,
 		AT_PAGESZ, PAGE_SIZE,
 		AT_UID, from_kuid_munged(cred->user_ns, cred->uid),
 		AT_EUID, from_kuid_munged(cred->user_ns, cred->euid),
 		AT_GID, from_kgid_munged(cred->user_ns, cred->gid),
 		AT_EGID, from_kgid_munged(cred->user_ns, cred->gid),
 		AT_SECURE, bprm->secureexec,
-		AT_NULL, 0U /* end */
+		AT_NULL, 0UL /* end */
 	};
 
 	p = (char __user *)arg_start;
@@ -225,7 +225,7 @@ static int load_wasm_file(struct linux_binprm *bprm, unsigned long extra_stack)
 	 * (the host would not be able to use a shared buffer as source anyway).
 	 */
 	whole_size_ll = i_size_read(file_inode(bprm->file));
-	if (whole_size_ll > (loff_t)ULONG_MAX)
+	if (sizeof(long) < sizeof(loff_t) && whole_size_ll > (loff_t)ULONG_MAX)
 		return -ENOMEM;
 
 	whole_size = (unsigned long)whole_size_ll;
