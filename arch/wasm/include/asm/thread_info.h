@@ -4,6 +4,7 @@
 #define _ASM_WASM_THREAD_INFO_H
 
 #include <asm/page.h>
+#include <asm/cache.h>
 
 /*
  * In the Wasm arch, thread_info sits at the top of task_struct and both reside
@@ -51,16 +52,18 @@
 
 struct thread_info {
 	unsigned int		cpu;
-	unsigned int		flags;
 	int			preempt_count;	/* Needed but not really used */
 	int			instance_depth;	/* 0 = idle task, 1 = running */
 	unsigned long		syscall_work;	/* SYSCALL_WORK_ flags */
+
+	/* The kernel plays tricks like casting to atomic_long_t* for flags. */
+	unsigned long		flags __aligned(L1_CACHE_BYTES);
 };
 
 #define INIT_THREAD_INFO(tsk)			\
 {						\
-	.cpu = 0,				\
-	.flags = 0,				\
+	.cpu = 0U,				\
+	.flags = 0UL,				\
 	.preempt_count = INIT_PREEMPT_COUNT,	\
 	.instance_depth = 0,			\
 }

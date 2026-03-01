@@ -52,6 +52,26 @@ config SMP
 
 	  If you don't know what to do here, say Y.
 
+choice
+	prompt "Kernel code model"
+	help
+	  64-bit kernels support workloads with high memory demands. However,
+	  they require support for the Memory64 feature in the Wasm runtime.
+	  Note that 64-bit kernels have a higher memory footprint and that
+	  Memory64 comes with a higher runtime overhead in many runtimes.
+
+config 32BIT
+	bool "32-bit kernel"
+	help
+	  Select this option if you want to build a 32-bit kernel.
+
+config 64BIT
+	bool "64-bit kernel"
+	help
+	  Select this option if you want to build a 64-bit kernel.
+
+endchoice
+
 config HZ
 	int
 	default 100

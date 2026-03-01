@@ -1,30 +1,28 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <asm/thread_info.h>
+#include <asm/asm.h>
 
 #include <asm/asm-offsets.h>
 
-
-.globaltype __stack_pointer, i32
-
 .section .globals,"",@
 
-.globaltype __user_stack_pointer, i32
+.globaltype __user_stack_pointer, iLONG
 __user_stack_pointer:
-.globaltype __user_tls_base, i32
+.globaltype __user_tls_base, iLONG
 __user_tls_base:
 
 .section .text,"",@
 
 .globl get_user_stack_pointer
 get_user_stack_pointer:
-	.functype get_user_stack_pointer() -> (i32)
+	.functype get_user_stack_pointer() -> (iLONG)
 	global.get __user_stack_pointer
 	end_function
 
 .globl get_user_tls_base
 get_user_tls_base:
-	.functype get_user_tls_base() -> (i32)
+	.functype get_user_tls_base() -> (iLONG)
 	global.get __user_tls_base
 	end_function
 
@@ -64,20 +62,20 @@ _user_mode_tail:
  * LOW ADDRESSES
  */
 
-.functype __ret_from_fork(i32, i32) -> (i32)
+.functype __ret_from_fork(iLONG, iLONG) -> (i32)
 
 /* New process. Called by Wasm host when it runs a task for the first time. */
 .globl ret_from_fork
 ret_from_fork:
 	/* struct task_struct *prev_task, struct task_struct *next_task */
-	.functype ret_from_fork(i32, i32) -> (i32)
+	.functype ret_from_fork(iLONG, iLONG) -> (i32)
 
 	/* We can't switch back to a task so no need to save into prev_task. */
 
 	/* Load __stack_pointer from the new task's kernel stack area. */
 	local.get 1
-	i32.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_STACK_START
-	i32.add
+	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_STACK_START
+	iLONG.add
 	global.set __stack_pointer
 
 	/*
@@ -90,22 +88,22 @@ ret_from_fork:
 
 	/* Load __user_stack_pointer. */
 	local.get 1
-	i32.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
-	i32.add
-	i32.load 0
+	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
+	iLONG.add
+	iLONG.load 0
 	global.set __user_stack_pointer
 
 	/* Load __user_tls_base. */
 	local.get 1
-	i32.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
-	i32.add
-	i32.load 0
+	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
+	iLONG.add
+	iLONG.load 0
 	global.set __user_tls_base
 
 	/* Clean up the stack. */
 	global.get __stack_pointer
-	i32.const zeroptr-THREAD_STACK_START+THREAD_TASK_STRUCT_OFFSET
-	i32.add
+	iLONG.const zeroptr-THREAD_STACK_START+THREAD_TASK_STRUCT_OFFSET
+	iLONG.add
 	global.set __stack_pointer
 
 	/* In theory, the first thing we execute may be a signal handler. */
@@ -129,23 +127,23 @@ ret_from_fork:
 
 	/* Allocate pt_regs + switch_stack + stack alignment. */
 	global.get __stack_pointer
-	i32.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_STACK_START
-	i32.add
+	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_STACK_START
+	iLONG.add
 	global.set __stack_pointer
 
 	/* Save __user_stack_pointer. */
 	global.get __stack_pointer
-	i32.const zeroptr-THREAD_STACK_START+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
-	i32.add
+	iLONG.const zeroptr-THREAD_STACK_START+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
+	iLONG.add
 	global.get __user_stack_pointer
-	i32.store 0
+	iLONG.store 0
 
 	/* Save __user_tls_base. */
 	global.get __stack_pointer
-	i32.const zeroptr-THREAD_STACK_START+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
-	i32.add
+	iLONG.const zeroptr-THREAD_STACK_START+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
+	iLONG.add
 	global.get __user_tls_base
-	i32.store 0
+	iLONG.store 0
 
 	/*
 	 * Note: we don't need to swap the stack pointer, it already happened
@@ -158,22 +156,22 @@ ret_from_fork:
 
 	/* Load __user_stack_pointer. */
 	global.get __stack_pointer
-	i32.const zeroptr-THREAD_STACK_START+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
-	i32.add
-	i32.load 0
+	iLONG.const zeroptr-THREAD_STACK_START+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
+	iLONG.add
+	iLONG.load 0
 	global.set __user_stack_pointer
 
 	/* Load __user_tls_base. */
 	global.get __stack_pointer
-	i32.const zeroptr-THREAD_STACK_START+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
-	i32.add
-	i32.load 0
+	iLONG.const zeroptr-THREAD_STACK_START+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
+	iLONG.add
+	iLONG.load 0
 	global.set __user_tls_base
 
 	/* Deallocate stack alignment + switch_stack + pt_regs. */
 	global.get __stack_pointer
-	i32.const zeroptr-THREAD_STACK_START+THREAD_TASK_STRUCT_OFFSET
-	i32.add
+	iLONG.const zeroptr-THREAD_STACK_START+THREAD_TASK_STRUCT_OFFSET
+	iLONG.add
 	global.set __stack_pointer
 
 	/*
@@ -194,13 +192,13 @@ ret_from_fork:
 	end_function
 .endm
 
-.functype __wasm_syscall_0(i32) -> (i32)
-.functype __wasm_syscall_1(i32, i32) -> (i32)
-.functype __wasm_syscall_2(i32, i32, i32) -> (i32)
-.functype __wasm_syscall_3(i32, i32, i32, i32) -> (i32)
-.functype __wasm_syscall_4(i32, i32, i32, i32, i32) -> (i32)
-.functype __wasm_syscall_5(i32, i32, i32, i32, i32, i32) -> (i32)
-.functype __wasm_syscall_6(i32, i32, i32, i32, i32, i32, i32) -> (i32)
+.functype __wasm_syscall_0(iLONG) -> (iLONG)
+.functype __wasm_syscall_1(iLONG, iLONG) -> (iLONG)
+.functype __wasm_syscall_2(iLONG, iLONG, iLONG) -> (iLONG)
+.functype __wasm_syscall_3(iLONG, iLONG, iLONG, iLONG) -> (iLONG)
+.functype __wasm_syscall_4(iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
+.functype __wasm_syscall_5(iLONG, iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
+.functype __wasm_syscall_6(iLONG, iLONG, iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
 
 /*
  * These syscall functions should be called from userland code. In order to skip
@@ -223,7 +221,7 @@ ret_from_fork:
  */
 .globl wasm_syscall_0
 wasm_syscall_0:
-	.functype wasm_syscall_0(i32, i32, i32) -> (i32)
+	.functype wasm_syscall_0(iLONG, iLONG, iLONG) -> (iLONG)
 	WASM_SYSCALL_ASM_HEAD
 	local.get 2
 	call __wasm_syscall_0
@@ -231,7 +229,7 @@ wasm_syscall_0:
 
 .globl wasm_syscall_1
 wasm_syscall_1:
-	.functype wasm_syscall_1(i32, i32, i32, i32) -> (i32)
+	.functype wasm_syscall_1(iLONG, iLONG, iLONG, iLONG) -> (iLONG)
 	WASM_SYSCALL_ASM_HEAD
 	local.get 2
 	local.get 3
@@ -240,7 +238,7 @@ wasm_syscall_1:
 
 .globl wasm_syscall_2
 wasm_syscall_2:
-	.functype wasm_syscall_2(i32, i32, i32, i32, i32) -> (i32)
+	.functype wasm_syscall_2(iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
 	WASM_SYSCALL_ASM_HEAD
 	local.get 2
 	local.get 3
@@ -250,7 +248,7 @@ wasm_syscall_2:
 
 .globl wasm_syscall_3
 wasm_syscall_3:
-	.functype wasm_syscall_3(i32, i32, i32, i32, i32, i32) -> (i32)
+	.functype wasm_syscall_3(iLONG, iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
 	WASM_SYSCALL_ASM_HEAD
 	local.get 2
 	local.get 3
@@ -261,7 +259,7 @@ wasm_syscall_3:
 
 .globl wasm_syscall_4
 wasm_syscall_4:
-	.functype wasm_syscall_4(i32, i32, i32, i32, i32, i32, i32) -> (i32)
+	.functype wasm_syscall_4(iLONG, iLONG, iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
 	WASM_SYSCALL_ASM_HEAD
 	local.get 2
 	local.get 3
@@ -273,7 +271,7 @@ wasm_syscall_4:
 
 .globl wasm_syscall_5
 wasm_syscall_5:
-	.functype wasm_syscall_5(i32, i32, i32, i32, i32, i32, i32, i32) -> (i32)
+	.functype wasm_syscall_5(iLONG, iLONG, iLONG, iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
 	WASM_SYSCALL_ASM_HEAD
 	local.get 2
 	local.get 3
@@ -286,7 +284,7 @@ wasm_syscall_5:
 
 .globl wasm_syscall_6
 wasm_syscall_6:
-	.functype wasm_syscall_6(i32, i32, i32, i32, i32, i32, i32, i32, i32) -> (i32)
+	.functype wasm_syscall_6(iLONG, iLONG, iLONG, iLONG, iLONG, iLONG, iLONG, iLONG, iLONG) -> (iLONG)
 	WASM_SYSCALL_ASM_HEAD
 	local.get 2
 	local.get 3

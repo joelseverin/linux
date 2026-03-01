@@ -1,13 +1,17 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-KBUILD_DEFCONFIG := wasm_defconfig
+KBUILD_DEFCONFIG := wasm32_nommu_defconfig
 
 KCFLAGS += -nostdlib -fno-builtin
 
-ifdef CONFIG_64BIT
+ifeq ($(CONFIG_64BIT),y)
 	KCFLAGS += -march=wasm64
+	KAFLAGS += -march=wasm64
+	KBUILD_LDFLAGS += -mwasm64
 else
 	KCFLAGS += -march=wasm32
+	KAFLAGS += -march=wasm32
+	KBUILD_LDFLAGS += -mwasm32
 endif
 
 core-y += arch/wasm/kernel/

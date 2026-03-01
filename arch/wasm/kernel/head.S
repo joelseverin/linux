@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-.globaltype __stack_pointer, i32
+#include <asm/asm.h>
 
 .functype start_kernel() -> ()
 .functype start_secondary() -> ()
@@ -9,7 +9,7 @@
 .globl _start
 _start:
 	.functype _start() -> ()
-	.local i32 /* alloc_limit */
+	.local iLONG /* alloc_limit */
 
 	/*
 	 * init_task resides just after the start of the stack. Higher addresses
@@ -18,18 +18,18 @@ _start:
 	 * The initial stack needs to be 16-byte aligned when calling C code.
 	 * init_task already has a much higher alignment (by L1_CACHE_BYTES).
 	 */
-	i32.const init_task
+	iLONG.const init_task
 	global.set __stack_pointer
 
 	/* Save static memory used by vmlinux. */
-	i32.const memory_start
-	i32.const 0x10000 /* The first page is reserved for trapping nullptr. */
-	i32.store 0
-	i32.const memory_kernel_break
-	memory.size 0
-	i32.const 0x10000 /* Multiply by Wasm page size (65k). */
-	i32.mul
-	i32.store 0
+	iLONG.const memory_start
+	iLONG.const 0x10000 /* The first page is reserved for trapping nullptr. */
+	iLONG.store 0
+	iLONG.const memory_kernel_break
+	WASM_MEMORY_SIZE /* -> iLONG size */
+	iLONG.const 0x10000 /* Multiply by Wasm page size (65k). */
+	iLONG.mul
+	iLONG.store 0
 
 	/*
 	 * By some trial-and-error in Firefox and (mostly) Chromium:
@@ -64,33 +64,33 @@ _start:
 	 * This is not too bad, as this is almost like not placing anything in
 	 * the first page to catch null pointers. This guards underflow instead.
 	 */
-	i32.const 0x2000 /* Immediately decremented by 1 in the loop below. */
-	memory.size 0 /* Returns the current number of pages. */
-	i32.sub /* Try grow by the difference, (max - curr). */
+	iLONG.const 0x2000 /* Immediately decremented by 1 in the loop below. */
+	WASM_MEMORY_SIZE /* -> iLONG size */
+	iLONG.sub /* Try grow by the difference, (max - curr). */
 	local.set 0
 	loop
 		local.get 0
-		i32.const 1
-		i32.sub
+		iLONG.const 1
+		iLONG.sub
 		local.tee 0
 
-		memory.grow 0
-		i32.const -1 /* Check if allocation failed (returned -1). */
-		i32.eq
+		WASM_MEMORY_GROW /* iLONG new -> iLONG old_or_error. */
+		iLONG.const -1 /* -1 means allocation failed. */
+		iLONG.eq
 		br_if 0
 	end_loop
 
 	block
 		local.get 0
-		i32.const 16
-		i32.lt_u
+		iLONG.const 16
+		iLONG.lt_u
 		br_if 0
 
-		i32.const memory_end
-		memory.size 0
-		i32.const 0x10000 /* Multiply by Wasm page size (65k). */
-		i32.mul
-		i32.store 0
+		iLONG.const memory_end
+		WASM_MEMORY_SIZE /* -> iLONG size */
+		iLONG.const 0x10000 /* Multiply by Wasm page size (65k). */
+		iLONG.mul
+		iLONG.store 0
 
 		call start_kernel /* Start the kernel! */
 	end_block
@@ -100,7 +100,7 @@ _start:
 
 .globl _start_secondary
 _start_secondary:
-	.functype _start_secondary(i32) -> ()
+	.functype _start_secondary(iLONG) -> ()
 	local.get 0
 	global.set __stack_pointer
 	call start_secondary

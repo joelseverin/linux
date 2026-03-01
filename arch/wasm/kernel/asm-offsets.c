@@ -7,14 +7,10 @@
 #include <linux/kbuild.h>
 #include <asm/thread_info.h>
 
-void foo(void)
-{
-#ifdef CONFIG_64BIT
-	DEFINE(PTR_SIZE, 8);
-#else
-	DEFINE(PTR_SIZE, 4);
-#endif
+void asm_offsets(void);
 
+void asm_offsets(void)
+{
 /*
  * struct task_struct is stored just above the thread stack. It is aligned by
  * L1_CACHE_BYTES, which is enforced by init_task and the task memory allocator.

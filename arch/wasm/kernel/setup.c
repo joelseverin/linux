@@ -29,6 +29,16 @@ EXPORT_SYMBOL(memory_end);
 unsigned long memory_kernel_break;
 EXPORT_SYMBOL(memory_kernel_break);
 
+__visible unsigned long wasm_memory_size(void)
+{
+	return __builtin_wasm_memory_size(0);
+}
+
+__visible unsigned long wasm_memory_grow(unsigned long delta_pages)
+{
+	return __builtin_wasm_memory_grow(0, delta_pages);
+}
+
 void __init smp_prepare_cpus(unsigned int max_cpus)
 {
 	unsigned i;
