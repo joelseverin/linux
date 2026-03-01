@@ -5,7 +5,6 @@ generic-y += access_ok.h
 generic-y += agp.h
 generic-y += asm-offsets.h
 generic-y += asm-prototypes.h
-generic-y += atomic64.h
 generic-y += audit_change_attr.h
 generic-y += audit_dir_write.h
 generic-y += audit_read.h
