@@ -14,7 +14,6 @@ generic-y += bitsperlong.h
 generic-y += cmpxchg-local.h
 generic-y += early_ioremap.h
 generic-y += error-injection.h
-#generic-y += export.h
 generic-y += extable.h
 generic-y += fixmap.h
 generic-y += flat.h

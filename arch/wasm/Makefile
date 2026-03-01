@@ -10,9 +10,6 @@ else
 	KCFLAGS += -march=wasm32
 endif
 
-# The kernel's export system does not work in Wasm.
-KCFLAGS += -D__DISABLE_EXPORTS
-
 core-y += arch/wasm/kernel/
 core-y += arch/wasm/mm/
 libs-y += arch/wasm/lib/

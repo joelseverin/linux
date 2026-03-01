@@ -22,4 +22,6 @@
 /* Not supported in Wasm. */
 #define _THIS_IP_ (0)
 
+#define ASM_NL \n
+
 #endif /* _ASM_WASM_LINKAGE_H */
