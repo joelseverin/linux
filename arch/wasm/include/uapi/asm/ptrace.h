@@ -6,7 +6,7 @@
 #define PTRACE_SYSEMU			31
 #define PTRACE_SYSEMU_SINGLESTEP	32
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 /* Registers stored during kernel entry (syscalls, IRQs and exceptions). */
 struct pt_regs {
@@ -35,5 +35,5 @@ struct user_regs_struct {
 	unsigned long tls;
 };
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 #endif /* _UAPI_ASM_WASM_PTRACE_H */

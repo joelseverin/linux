@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #define COMPILE_OFFSETS
-#define ASM_OFFSETS_C
 
 #include <linux/sched.h>
 #include <linux/kbuild.h>

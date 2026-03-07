@@ -7,7 +7,7 @@
 #include <asm/cpuflags.h>
 #include <asm/irqflags.h>
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 #define user_mode(regs) ((regs)->cpuflags & CPUFLAGS_USER_MODE)
 
@@ -30,6 +30,6 @@ static inline int regs_irqs_disabled(struct pt_regs *regs)
 	return arch_irqs_disabled_flags(arch_local_save_flags());
 }
 
-#endif /* !__ASSEMBLY__ */
+#endif /* !__ASSEMBLER__ */
 
 #endif /* _ASM_WASM_PTRACE_H */

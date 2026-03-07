@@ -3,7 +3,7 @@
 #ifndef _ASM_WASM_PROCESSOR_H
 #define _ASM_WASM_PROCESSOR_H
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 struct pt_regs;
 
@@ -45,6 +45,6 @@ static inline unsigned long __get_wchan(struct task_struct *p)
 /* We could possibly expose the stack pointer (has some data)...? */
 #define KSTK_ESP(task) (0)
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 #endif /* _ASM_WASM_PROCESSOR_H */

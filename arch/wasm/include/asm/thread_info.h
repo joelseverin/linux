@@ -48,7 +48,7 @@
 #define THREAD_SIZE		(PAGE_SIZE << THREAD_SIZE_ORDER)
 #define THREAD_MASK		(~(THREAD_SIZE - 1))
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 struct thread_info {
 	unsigned int		cpu;
@@ -81,30 +81,20 @@ static inline void arch_free_thread_stack(struct task_struct *tsk) { }
 struct task_struct *alloc_task_struct_node(int node);
 void free_task_struct(struct task_struct *tsk);
 
-#endif /* !__ASSEMBLY__ */
+#endif /* !__ASSEMBLER__ */
 
-#define TIF_SYSCALL_TRACE	0	/* syscall trace active */
-#define TIF_SIGPENDING		1	/* signal pending */
-#define TIF_NEED_RESCHED	2	/* rescheduling necessary */
-#define TIF_NOTIFY_SIGNAL	3	/* signal notifications exist */
-#define TIF_MEMDIE		4	/* is terminating due to OOM killer */
-#define TIF_NOTIFY_RESUME	5	/* callback before returning to user */
-#define TIF_NEVER_RUN		6	/* was never run by the scheduler */
-#define TIF_RELOAD_PROGRAM	7	/* should reload code at syscall end */
-#define TIF_DELIVER_SIGNAL	8	/* run sighandler at syscall end */
-#define TIF_RETURN_SIGNAL	9	/* return sighandler at syscall end */
-#define TIF_UPROBE		10	/* breakpointed or single-stepping */
+/* Use the generic TIF infrastructure: */
+#include <asm-generic/thread_info_tif.h>
 
-#define _TIF_SYSCALL_TRACE	(1 << TIF_SYSCALL_TRACE)
-#define _TIF_SIGPENDING		(1 << TIF_SIGPENDING)
-#define _TIF_NEED_RESCHED	(1 << TIF_NEED_RESCHED)
-#define _TIF_NOTIFY_SIGNAL	(1 << TIF_NOTIFY_SIGNAL)
-#define _TIF_MEMDIE		(1 << TIF_MEMDIE)
-#define _TIF_NOTIFY_RESUME	(1 << TIF_NOTIFY_RESUME)
+/* Architecture specific bits (16-31): */
+#define TIF_NEVER_RUN		16	/* was never run by the scheduler */
+#define TIF_RELOAD_PROGRAM	17	/* should reload code at syscall end */
+#define TIF_DELIVER_SIGNAL	18	/* run sighandler at syscall end */
+#define TIF_RETURN_SIGNAL	19	/* return sighandler at syscall end */
+
 #define _TIF_NEVER_RUN		(1 << TIF_NEVER_RUN)
 #define _TIF_RELOAD_PROGRAM	(1 << TIF_RELOAD_PROGRAM)
 #define _TIF_DELIVER_SIGNAL	(1 << TIF_DELIVER_SIGNAL)
 #define _TIF_RETURN_SIGNAL	(1 << TIF_RETURN_SIGNAL)
-#define _TIF_UPROBE		(1 << TIF_UPROBE)
 
 #endif /* _ASM_WASM_THREAD_INFO_H */
