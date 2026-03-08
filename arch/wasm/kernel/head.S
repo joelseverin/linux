@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <asm/processor.h>
 #include <asm/asm.h>
+
+#include <asm/asm-offsets.h>
 
 .functype start_kernel() -> ()
 .functype start_secondary() -> ()
@@ -9,16 +12,13 @@
 .globl _start
 _start:
 	.functype _start() -> ()
-	.local iLONG /* alloc_limit */
+	.local iLONG /* 0: alloc_limit */
 
-	/*
-	 * init_task resides just after the start of the stack. Higher addresses
-	 * contain task_struct init_task data, while the stack grows downwards.
-	 *
-	 * The initial stack needs to be 16-byte aligned when calling C code.
-	 * init_task already has a much higher alignment (by L1_CACHE_BYTES).
-	 */
 	iLONG.const init_task
+	global.set current
+
+	/* This also implicitly aligns __stack_pointer for calling C code. */
+	iLONG.const init_stack+CPU_THREAD_STACK_START
 	global.set __stack_pointer
 
 	/* Save static memory used by vmlinux. */
@@ -101,10 +101,22 @@ _start:
 .globl _start_secondary
 _start_secondary:
 	.functype _start_secondary(iLONG) -> ()
+
+	/* current = idle_task */
 	local.get 0
+	global.set current
+
+	/*
+	 * __stack_pointer = task_stack_page(current) + CPU_THREAD_STACK_START
+	 * where __stack_pointer becomes properly aligned for calling C code.
+	 */
+	global.get current
+	iLONG.const zeroptr+TASK_STRUCT_STACK
+	iLONG.add
+	iLONG.load 0
 	global.set __stack_pointer
+
 	call start_secondary
-	/* start_secondary should never return. */
-	unreachable
+	unreachable /* start_secondary should never return. */
 
 	end_function

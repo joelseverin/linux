@@ -7,19 +7,6 @@
 #include <asm/cache.h>
 #include <asm/page.h>
 
-/* Place init_task at the end of init_stack. */
-#undef INIT_TASK_DATA
-#define INIT_TASK_DATA(align)						\
-	. = ALIGN(align);						\
-	__start_init_stack = .;						\
-	init_thread_union = .;						\
-	init_stack = .;							\
-	. = __start_init_stack + THREAD_TASK_STRUCT_OFFSET;		\
-	KEEP(*(.data..init_task))					\
-	KEEP(*(.data..init_thread_info))				\
-	. = __start_init_stack + THREAD_SIZE;				\
-	__end_init_stack = .;
-
 /*
  * The rudimentary linker script support in wasm-ld does not permit a section to
  * be aligned directly. This workaround overcomes that limitation by immediately

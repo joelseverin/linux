@@ -14,7 +14,6 @@ obj-y += reboot.o
 obj-y += setup.o
 obj-y += signal.o
 obj-y += smp.o
-obj-y += stack.o
 obj-y += sys_wasm.o
 obj-y += syscall_table.o
 obj-y += time.o

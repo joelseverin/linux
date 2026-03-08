@@ -3,6 +3,9 @@
 #ifndef _ASM_WASM_PROCESSOR_H
 #define _ASM_WASM_PROCESSOR_H
 
+/* Calling C code requires the stack to be 16-byte alignment (LLVM mandated). */
+#define STACK_ALIGN 16
+
 #ifndef __ASSEMBLER__
 
 struct pt_regs;

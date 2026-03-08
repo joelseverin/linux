@@ -19,7 +19,8 @@
 /* Not available (maybe we could extract this from a stacktrace?) */
 #define profile_pc(regs) instruction_pointer(regs)
 
-#define task_pt_regs(task) ((struct pt_regs *)(task) - 1U)
+#define task_pt_regs(task) \
+	((struct pt_regs *)(task_stack_page(task) + THREAD_SIZE) - 1U)
 #define current_pt_regs() task_pt_regs(current)
 
 #define task_switch_stack(task) ((struct switch_stack *)task_pt_regs(task) - 1U)

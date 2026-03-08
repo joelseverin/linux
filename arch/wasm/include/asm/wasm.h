@@ -8,8 +8,7 @@
 extern void wasm_panic(const char *msg);
 extern void wasm_dump_stacktrace(char* buffer, unsigned long max_size);
 
-extern void wasm_start_cpu(unsigned int cpu, struct task_struct *idle_task,
-	unsigned long start_stack);
+extern void wasm_start_cpu(unsigned int cpu, struct task_struct *idle_task);
 extern void wasm_stop_cpu(unsigned int cpu);
 
 extern struct task_struct *wasm_create_and_run_task(

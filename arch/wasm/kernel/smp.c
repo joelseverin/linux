@@ -46,9 +46,6 @@ void smp_send_stop(void)
 /* Run for each cpu except the first one, to bring the others up. */
 int __cpu_up(unsigned int cpu, struct task_struct *idle_task)
 {
-	/* Use 16-byte aligned stack to be able to call C functions. */
-	unsigned long stack_start = (unsigned long)idle_task & -16;
-
 	task_thread_info(idle_task)->cpu = cpu;
 
 	/* Needed so that __switch_to does not create a new Wasm task. */
@@ -56,8 +53,8 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle_task)
 
 	reinit_completion(&cpu_running);
 
-	 /* Will create a new Wasm instance and call start_secondary(). */
-	wasm_start_cpu(cpu, idle_task, stack_start);
+	/* Will create a new Wasm instance and call _start_secondary(). */
+	wasm_start_cpu(cpu, idle_task);
 
 	/* Wait for CPU to finish startup & mark itself online before return. */
 	wait_for_completion(&cpu_running);

@@ -7,31 +7,6 @@
 #include <asm/cache.h>
 
 /*
- * In the Wasm arch, thread_info sits at the top of task_struct and both reside
- * at the very end of the stack area (which grows downwards).
- *
- * HIGHER ADDRESSES
- *
- * [ [ [...]        ] ] ^ <- (__stack_pointer & THREAD_MASK) + THREAD_SIZE
- * [ [ [thread_info]] ] |
- * [ [task_struct   ] ] | <- current, current_thread_info()
- * [ [stack         ] ] | <- (stack starts with pt_regs + possibly switch_stack)
- * [ [ [...]        ] ] | <- __stack_pointer (growing towards lower addresses)
- * [                  ] |
- * [    free space    ] | THREAD_SIZE
- * [                  ] v <- (__stack_pointer & THREAD_MASK)
- *
- * LOWER ADDRESSES
- *
- * As can be seen, current == current_thread_info() in this arch. In order to
- * access any of these, __stack_pointer can be masked by THREAD_MASK, since
- * the kernel stack for every task will be aligned on a THREAD_SIZE boundary.
- *
- * Example of memory-growing instructions	Resides in
- * --------------------------------------------	--------------------------------
- * iX.const, iX.load, local.get, global.get	Wasm internal stack
- * lobal.set __stack_pointer			__stack_pointer managed stack
- *
  * Stack usage in Wasm is pretty sparse. Most data resides in "locals" or on the
  * internal Wasm stack. Both of these are not accessible from within Wasm,
  * except outside the local usage of them of course. The stack we manage is used
@@ -39,12 +14,17 @@
  * constructed when taking the address of an auto variable (i.e. the
  * function/block scope in C). That stack is referred to by the Wasm global
  * __stack_pointer and is known by the compiler. It is not part of the Wasm
- * standard, but makes certain parts of the C standard possible to compile. Two
- * pages should for this reason be enough as kernel stack. struct task_struct
- * (including struct thread_info at its base) is about 2K, leaving 6K for the
- * kernel stack.
+ * standard, but makes certain parts of the C standard possible to compile.
+ *
+ * Example of memory-growing instructions	Resides in
+ * --------------------------------------------	--------------------------------
+ * iX.const, iX.load, local.get, global.get	Wasm internal stack
+ * lobal.set __stack_pointer			__stack_pointer managed stack
+ *
+ * One page should for this reason be enough for the kernel stack, even in the
+ * case where one page is configured to be 4K.
  */
-#define THREAD_SIZE_ORDER	(1)
+#define THREAD_SIZE_ORDER	(0)
 #define THREAD_SIZE		(PAGE_SIZE << THREAD_SIZE_ORDER)
 #define THREAD_MASK		(~(THREAD_SIZE - 1))
 
@@ -67,19 +47,6 @@ struct thread_info {
 	.preempt_count = INIT_PREEMPT_COUNT,	\
 	.instance_depth = 0,			\
 }
-
-struct task_struct;
-
-static inline void *arch_alloc_thread_stack_node(
-					struct task_struct *tsk, int node)
-{
-	return (void *)((unsigned long)tsk & THREAD_MASK);
-}
-
-static inline void arch_free_thread_stack(struct task_struct *tsk) { }
-
-struct task_struct *alloc_task_struct_node(int node);
-void free_task_struct(struct task_struct *tsk);
 
 #endif /* !__ASSEMBLER__ */
 

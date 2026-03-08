@@ -75,7 +75,12 @@ __switch_to(struct task_struct *prev_task, struct task_struct *next_task)
 		last_task = wasm_serialize_tasks(prev_task, next_task);
 	}
 
-	/* If/when we reach here, we got __switch_to():ed by another task. */
+	/*
+	 * If/when we reach here, we got __switch_to():ed by another task.
+	 *
+	 * All state we need to return to (__stack_pointer, current) is already
+	 * part of this Wasm vmlinux instance and is thus implicitly swapped.
+	 */
 
 	/* last_task is the previous task (never prev_task, maybe next_task). */
 	return last_task;
@@ -193,7 +198,6 @@ int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 	if (unlikely(args->fn)) {
 		/* Kernel thread */
 		memset(child_pt_regs, 0, sizeof(*child_pt_regs));
-		child_pt_regs->stack_pointer = (unsigned long)child_switch_stack;
 		child_pt_regs->cpuflags = CPUFLAGS_KTHREAD_DEFAULT;
 
 		memset(child_switch_stack, 0, sizeof(*child_switch_stack));

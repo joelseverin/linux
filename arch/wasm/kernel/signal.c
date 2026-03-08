@@ -86,8 +86,8 @@ static int setup_rt_frame(struct ksignal *ksig, sigset_t *set,
 	 * function calling (which shoulld really be the largest alignment...).
 	 */
 	stack_pointer -= sizeof(*frame);
-	stack_pointer &= -16UL;
-	stack_pointer &= -(unsigned long)__alignof__(*frame);
+	stack_pointer = ALIGN_DOWN(stack_pointer, __alignof__(*frame));
+	stack_pointer = ALIGN_DOWN(stack_pointer, STACK_ALIGN);
 	frame = (struct rt_sigframe __user *)stack_pointer;
 
 	if (!access_ok(frame, sizeof(*frame)))

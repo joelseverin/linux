@@ -10,19 +10,23 @@ void asm_offsets(void);
 
 void asm_offsets(void)
 {
-/*
- * struct task_struct is stored just above the thread stack. It is aligned by
- * L1_CACHE_BYTES, which is enforced by init_task and the task memory allocator.
- *
- * sizeof(pt_regs) and sizeof(task_struct) are naturally aligned by their size.
- * The start of the actual stack has to be 16-byte aligned when calling C code.
- */
-#define _THREAD_TASK_STRUCT_OFFSET	ALIGN_DOWN(THREAD_SIZE - sizeof(struct task_struct), L1_CACHE_BYTES)
-#define _THREAD_PT_REGS_OFFSET		(_THREAD_TASK_STRUCT_OFFSET - sizeof(struct pt_regs))
-#define _THREAD_SWITCH_STACK_OFFSET	(_THREAD_PT_REGS_OFFSET - sizeof(struct switch_stack))
-#define _THREAD_STACK_START		ALIGN_DOWN(_THREAD_SWITCH_STACK_OFFSET, 16)
+/* Offset from task_stack_page(task) to task_pt_regs(task). */
+#define _THREAD_PT_REGS_OFFSET ALIGN_DOWN( \
+					THREAD_SIZE - sizeof(struct pt_regs), \
+					__alignof__(struct pt_regs))
 
-	DEFINE(THREAD_TASK_STRUCT_OFFSET, _THREAD_TASK_STRUCT_OFFSET);
+/* Offset from task_stack_page(task) to task_switch_stack(task). */
+#define _THREAD_SWITCH_STACK_OFFSET ALIGN_DOWN( \
+			_THREAD_PT_REGS_OFFSET - sizeof(struct switch_stack), \
+			__alignof__(struct switch_stack))
+
+/* The stack must be aligned when calling C code. */
+#define _THREAD_STACK_START ALIGN_DOWN(_THREAD_SWITCH_STACK_OFFSET, STACK_ALIGN)
+
+/* CPU stacks don't have switch_stack+pt_regs. (Alignment just for example.) */
+#define _CPU_THREAD_STACK_START ALIGN_DOWN(THREAD_SIZE, STACK_ALIGN)
+
+	OFFSET(TASK_STRUCT_STACK, task_struct, stack);
 	BLANK();
 
 	DEFINE(THREAD_PT_REGS_OFFSET, _THREAD_PT_REGS_OFFSET);
@@ -34,5 +38,6 @@ void asm_offsets(void)
 	BLANK();
 
 	DEFINE(THREAD_STACK_START, _THREAD_STACK_START);
+	DEFINE(CPU_THREAD_STACK_START, _CPU_THREAD_STACK_START);
 	BLANK();
 }

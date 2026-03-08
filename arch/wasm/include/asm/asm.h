@@ -3,6 +3,9 @@
 #ifndef _ASM_WASM_ASM_H
 #define _ASM_WASM_ASM_H
 
+#include <linux/stringify.h>
+#include <asm/linkage.h>
+
 #if __SIZEOF_POINTER__ == 8
 #ifdef __ASSEMBLER__
 #define iLONG				i64
@@ -22,10 +25,13 @@
 #endif
 
 #ifdef __ASSEMBLER__
-.globaltype __stack_pointer, iLONG
+#define __ASM_DECL(name, type) .globaltype name, type
 #else
-__asm__ (".globaltype __stack_pointer, " iLONG "			\n\t");
+#define __ASM_DECL(name, type) __asm__ (".globaltype " #name ", " type "\n\t");
 #endif
+
+__ASM_DECL(__stack_pointer, iLONG)
+__ASM_DECL(current, iLONG)
 
 /* Workaround for old LLVM that does not fully support polymorphic memory.*. */
 #ifdef __ASSEMBLER__

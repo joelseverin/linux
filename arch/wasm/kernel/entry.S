@@ -7,6 +7,10 @@
 
 .section .globals,"",@
 
+.globl current
+.globaltype current, iLONG
+current:
+
 .globaltype __user_stack_pointer, iLONG
 __user_stack_pointer:
 .globaltype __user_tls_base, iLONG
@@ -46,22 +50,6 @@ _user_mode_tail:
 
 	end_function
 
-/*
- * HIGH ADDRESSES
- * --------------
- * (thread end)        <- (current & THREAD_MASK) + THREAD_SIZE
- * [task_struct]       <- current
- * [pt_regs]
- * [switch_stack]      <- initial __stack_pointer
- * (alignment)
- *                     <- Ready to call C code (16-byte aligned).
- * (...free space...)
- *
- * (thread start)      <- current & THREAD_MASK
- * -------------
- * LOW ADDRESSES
- */
-
 .functype __ret_from_fork(iLONG, iLONG) -> (i32)
 
 /* New process. Called by Wasm host when it runs a task for the first time. */
@@ -69,12 +57,26 @@ _user_mode_tail:
 ret_from_fork:
 	/* struct task_struct *prev_task, struct task_struct *next_task */
 	.functype ret_from_fork(iLONG, iLONG) -> (i32)
+	.local iLONG /* 2: stack_page */
 
 	/* We can't switch back to a task so no need to save into prev_task. */
 
-	/* Load __stack_pointer from the new task's kernel stack area. */
+	/* current = next_task */
 	local.get 1
-	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_STACK_START
+	global.set current
+
+	/*
+	 * stack_page = task_stack_page(current)
+	 *
+	 * (THREAD_STACK_START aligns switch_stack properly for calling C code.)
+	 * __stack_pointer = ALIGN_DOWN(current_switch_stack(), STACK_ALIGN)
+	 */
+	global.get current
+	iLONG.const zeroptr+TASK_STRUCT_STACK
+	iLONG.add
+	iLONG.load 0
+	local.tee 2
+	iLONG.const zeroptr+THREAD_STACK_START
 	iLONG.add
 	global.set __stack_pointer
 
@@ -86,23 +88,23 @@ ret_from_fork:
 	local.get 1
 	call __ret_from_fork
 
-	/* Load __user_stack_pointer. */
-	local.get 1
-	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
+	/*  __user_stack_pointer = current_pt_regs()->stack_pointer */
+	local.get 2
+	iLONG.const zeroptr+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
 	iLONG.add
 	iLONG.load 0
 	global.set __user_stack_pointer
 
-	/* Load __user_tls_base. */
-	local.get 1
-	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
+	/* __user_tls_base = current_switch_stack()->tls */
+	local.get 2
+	iLONG.const zeroptr+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
 	iLONG.add
 	iLONG.load 0
 	global.set __user_tls_base
 
 	/* Clean up the stack. */
-	global.get __stack_pointer
-	iLONG.const zeroptr-THREAD_STACK_START+THREAD_TASK_STRUCT_OFFSET
+	local.get 2
+	iLONG.const zeroptr+THREAD_SIZE
 	iLONG.add
 	global.set __stack_pointer
 
@@ -125,20 +127,23 @@ ret_from_fork:
 	local.get 1
 	global.set __user_tls_base
 
-	/* Allocate pt_regs + switch_stack + stack alignment. */
-	global.get __stack_pointer
-	iLONG.const zeroptr-THREAD_TASK_STRUCT_OFFSET+THREAD_STACK_START
+	/* __stack_pointer = ALIGN_DOWN(current_switch_stack(), STACK_ALIGN) */
+	global.get current
+	iLONG.const zeroptr+TASK_STRUCT_STACK
+	iLONG.add
+	iLONG.load 0
+	iLONG.const zeroptr+THREAD_STACK_START
 	iLONG.add
 	global.set __stack_pointer
 
-	/* Save __user_stack_pointer. */
+	/* current_pt_regs()->stack_pointer = __user_stack_pointer */
 	global.get __stack_pointer
 	iLONG.const zeroptr-THREAD_STACK_START+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
 	iLONG.add
 	global.get __user_stack_pointer
 	iLONG.store 0
 
-	/* Save __user_tls_base. */
+	/* current_switch_stack()->tls = __user_tls_base */
 	global.get __stack_pointer
 	iLONG.const zeroptr-THREAD_STACK_START+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
 	iLONG.add
@@ -154,34 +159,34 @@ ret_from_fork:
 .macro WASM_SYSCALL_ASM_FOOT
 	/* (The cpuflags have already been restored in C.) */
 
-	/* Load __user_stack_pointer. */
+	/*  __user_stack_pointer = current_pt_regs()->stack_pointer */
 	global.get __stack_pointer
 	iLONG.const zeroptr-THREAD_STACK_START+THREAD_PT_REGS_OFFSET+PT_REGS_STACK_POINTER
 	iLONG.add
 	iLONG.load 0
 	global.set __user_stack_pointer
 
-	/* Load __user_tls_base. */
+	/* __user_tls_base = current_switch_stack()->tls */
 	global.get __stack_pointer
 	iLONG.const zeroptr-THREAD_STACK_START+THREAD_SWITCH_STACK_OFFSET+SWITCH_STACK_TLS
 	iLONG.add
 	iLONG.load 0
 	global.set __user_tls_base
 
-	/* Deallocate stack alignment + switch_stack + pt_regs. */
+	/* __stack_pointer = task_stack_page(current) + THREAD_SIZE */
 	global.get __stack_pointer
-	iLONG.const zeroptr-THREAD_STACK_START+THREAD_TASK_STRUCT_OFFSET
+	iLONG.const zeroptr-THREAD_STACK_START+THREAD_SIZE
 	iLONG.add
 	global.set __stack_pointer
 
 	/*
-	* Note: we don't need to swap the __stack_pointer, it will
-	* happen automatically when returning back into the user code
-	* Wasm instance (as that instance has its own __stack_pointer).
+	* Note: we don't need to swap the __stack_pointer, it will happen
+	* automatically when returning back into the user code Wasm instance (as
+	* that instance has its own __stack_pointer).
 	*
-	* We can exploit this as we're basically in userland, but with
-	* the kernel stack pointer loaded. This allows us to play tricks
-	* with execution in userland without setting a program counter.
+	* We can exploit this as we're basically in userland, but with the
+	* kernel stack pointer loaded. This allows us to play tricks with
+	* execution in userland without setting a program counter.
 	*
 	* This is where signal handlers are called, and returned, and exec()
 	* calls stop the execution of the user program. In the case of exec()
