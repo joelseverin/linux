@@ -10,6 +10,15 @@
 
 #ifndef __ASSEMBLER__
 
+/*
+ * Wasm pages are defined by the standard to always be 65k, but there is a
+ * Custom Page Sizes proposal that wants to change this. (Even without that
+ * proposal in effect, it's fine to have a different PAGE_SIZE (inside Linux)
+ * than the Wasm page size as long as the kernel is built without CONFIG_MMU.)
+ */
+#define WASM_PAGE_SHIFT		16
+#define WASM_PAGE_SIZE		(1UL << WASM_PAGE_SHIFT)
+
 #define clear_page(page)	memset((page), 0, PAGE_SIZE)
 #define copy_page(to,from)	memcpy((to), (from), PAGE_SIZE)
 

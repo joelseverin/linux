@@ -11,16 +11,13 @@ config WASM
 	# The execution model of one task per cpu mandates the below options.
 	# One CPU is kept clear of tasks to act as a tick broadcast device.
 	select SMP
-	# PREEMPTION and PREEMPT_COUNT is not set, disallowing kernel preemption
 	select ARCH_NO_PREEMPT
 	select GENERIC_CLOCKEVENTS_BROADCAST
 	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
 	# Needed by NO_HZ_FULL:
 	select HAVE_VIRT_CPU_ACCOUNTING_GEN
-	# TODO: Check that we comply with the user tracking requirements!
 	select HAVE_CONTEXT_TRACKING_USER
 
-	select NO_IP
 	select THREAD_INFO_IN_TASK
 	select GENERIC_SMP_IDLE_THREAD
 	select UACCESS_MEMCPY
@@ -89,6 +86,36 @@ config GENERIC_HWEIGHT
 
 config ARCH_HAVE_PANIC_NOTIFY
 	bool
+
+config KERNEL_START
+	hex "Kernel load address"
+	default "0x00010000"
+	help
+	  Address to load the kernel at. It is useful to leave a small area
+	  at the beginning of the memory to avoid dangling NULL pointers
+	  wreaking too much havoc. Not that we have any... Just to be sure.
+
+config BOOT_MEM_PAGES
+	hex "Total number of pages to allocate when booting"
+	default "0x2000"
+	help
+	  When booting, the kernel will try to allocate a total of this many
+	  pages. It includes empty space up to KERNEL_START, vmlinux itself, any
+	  initrd the host may have loaded, and memory allocated later on.
+
+	  Curiously, Wasm limits this value to 0xFFFF on 32-bit, one page less
+	  than the theoretical maximum of 0x10000 pages for a Wasm Memory.
+
+config WASM_PAGE_SHIFT
+	int "Wasm page shift (not kernel page shift)"
+	range 12 16
+	default 16
+	help
+	   Wasm pages are defined by the standard to be 65k. However, there is a
+	   Wasm proposal (Custom Page Sizes) that could allow other sizes. Note
+	   that unless the kernel is build with MMU support it is OK to have a
+	   different WASM_PAGE_SHIFT than PAGE_SHIFT (which sets the page size
+	   as seen from within most parts of the kernel).
 
 config PGTABLE_LEVELS
 	int

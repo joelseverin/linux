@@ -30,8 +30,7 @@ SECTIONS
 	/* To refer to addres 0 in assembly, but as a relocation. */
 	zeroptr = 0;
 
-	/* Begin 1 Wasm page (65k) in so that we can dodge null-pointer. */
-	. = 0x10000;
+	. = CONFIG_KERNEL_START;
 
 	__init_begin = .;
 	HEAD_TEXT_SECTION

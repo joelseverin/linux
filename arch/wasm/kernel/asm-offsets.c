@@ -26,6 +26,10 @@ void asm_offsets(void)
 /* CPU stacks don't have switch_stack+pt_regs. (Alignment just for example.) */
 #define _CPU_THREAD_STACK_START ALIGN_DOWN(THREAD_SIZE, STACK_ALIGN)
 
+	DEFINE(_PAGE_SIZE, PAGE_SIZE);
+	DEFINE(_WASM_PAGE_SIZE, WASM_PAGE_SIZE);
+	BLANK();
+
 	OFFSET(TASK_STRUCT_STACK, task_struct, stack);
 	BLANK();
 
