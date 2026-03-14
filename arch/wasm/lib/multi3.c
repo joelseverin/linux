@@ -4,6 +4,7 @@
 #include <linux/types.h>
 
 /* Wasm has no i128 but LLVM supports it as 2x i64, normally via compiler-rt. */
+__visible u128 __multi3(u128 a, u128 b);
 __visible u128 __multi3(u128 a, u128 b)
 {
     u128 aa = a;

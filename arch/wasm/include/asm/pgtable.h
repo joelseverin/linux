@@ -19,7 +19,6 @@
 #define pgd_none(pgd)		(0)
 #define pgd_bad(pgd)		(0)
 #define pgd_clear(pgdp)
-#define	pmd_offset(a, b)	((void *)0)
 
 #define PAGE_NONE	__pgprot(0)
 #define PAGE_SHARED	__pgprot(0)

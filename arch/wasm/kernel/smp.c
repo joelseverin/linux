@@ -7,7 +7,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq_work.h>
 #include <linux/sched/task_stack.h>
-
+#include <asm/entry.h>
 #include <asm/time.h>
 #include <asm/wasm.h>
 

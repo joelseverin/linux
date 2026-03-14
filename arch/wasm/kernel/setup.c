@@ -5,6 +5,7 @@
 #include <linux/memblock.h>
 #include <linux/module.h>
 #include <linux/mm.h>
+#include <asm/processor.h>
 
 /*
  * The format of "screen_info" is strange, and due to early
@@ -47,7 +48,7 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 		set_cpu_present(i, true);
 }
 
-void __init smp_init_cpus(void)
+static void smp_init_cpus(void)
 {
 	unsigned i;
 	unsigned int ncpus = NR_CPUS; /* TODO: make this configurable */

@@ -7,6 +7,7 @@
 #include <linux/sched/task_stack.h>
 #include <linux/printk.h>
 #include <asm/cpuflags.h>
+#include <asm/entry.h>
 #include <asm/wasm.h>
 
 static cpumask_t user_cpus = CPU_MASK_NONE;

@@ -3,6 +3,7 @@
 #include <linux/entry-common.h>
 #include <linux/syscalls.h>
 #include <asm/cpuflags.h>
+#include <asm/entry.h>
 #include <asm/processor.h>
 #include <asm/ptrace.h>
 #include <asm/syscall.h>
@@ -19,6 +20,7 @@ static inline void _exception_exit(struct pt_regs *regs)
 }
 
 #define WASM_SYSCALL_N(x, args, cast_args, ...)					\
+	__visible long __wasm_syscall_##x args;					\
 	__visible long __wasm_syscall_##x args					\
 	{									\
 		long syscall = n;						\
@@ -42,9 +44,9 @@ static inline void _exception_exit(struct pt_regs *regs)
 					fn = sys_call_table[syscall];		\
 					if (syscall == __NR_restart_syscall) {	\
 						regs->syscall_ret = sys_restart_syscall(); \
-					} else if (fn != (void (*)(void))sys_ni_syscall) { \
-						regs->syscall_ret = ((long (*)(cast_args)) \
-							fn)(__MAP(x,__SC_ARGS,__VA_ARGS__)); \
+					} else if (fn != (void (*)(void))(void*)sys_ni_syscall) { \
+						regs->syscall_ret = ((long (*)(cast_args))(void*)fn) \
+							(__MAP(x,__SC_ARGS,__VA_ARGS__)); \
 					}					\
 				}						\
 										\

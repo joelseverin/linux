@@ -28,6 +28,9 @@ struct thread_struct {
 #define INIT_THREAD { \
 }
 
+__visible unsigned long wasm_memory_size(void);
+__visible unsigned long wasm_memory_grow(unsigned long delta_pages);
+
 void start_thread(struct pt_regs *regs, unsigned long stack_pointer);
 
 void do_irq_stacked(int irq_nr);
