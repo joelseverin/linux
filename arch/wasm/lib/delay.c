@@ -12,8 +12,8 @@ void __delay(unsigned long cycles)
 {
 	unsigned int dummy = 0U;
 
-	mb();
+	barrier();
 	__builtin_wasm_memory_atomic_wait32(&dummy, 0U, (long long)cycles);
-	mb();
+	barrier();
 }
 EXPORT_SYMBOL(__delay);

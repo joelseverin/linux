@@ -1,25 +1,30 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Implementation based on asm-generic/delay.h. Wasm does not actually use loops
+ * to delay and can simplify quite a bit by using 1 loop = 1 nanosecond. We can
+ * thus also get rid of the __const_udelay complexity.
+ */
 
 #ifndef _ASM_WASM_DELAY_H
 #define _ASM_WASM_DELAY_H
 
+#include <vdso/time64.h>
+
 extern void __delay(unsigned long loops);
-extern void __bad_udelay(void);
-extern void __bad_ndelay(void);
+
+/* Undefined function to get compile-time errors on too high constant delays. */
+extern void __bad_delay(void);
 
 /*
- * Wasm uses 1 loop = 1 nanosecond. This makes the conversion easy.
- *
- * Just like the rest of the kernel, these macros polices you if you try to
- * delay for too long. You should use a sleep function that calls schedule()
- * internally if you need longer sleeps than this. In Wasm in particular, usage
- * of these macros is really discouraged (what are you busy-waiting for?).
+ * The maximum constant ndelay value picked out of thin air to prevent too long
+ * constant ndelays (and udelays).
  */
+					/* 20 ms */
+#define DELAY_CONST_MAX_NDELAY		(20 * 1000 * 1000)
 
-#define udelay(n) (__builtin_constant_p(n) && (n) > 20000 ? \
-			__bad_udelay() : __delay((n) * 1000))
+#define ndelay(n) (__builtin_constant_p(n) && (n) > DELAY_CONST_MAX_NDELAY ? \
+			__bad_delay() : __delay(n))
 
-#define ndelay(n) (__builtin_constant_p(n) && (n) > 20000000 ? \
-			__bad_ndelay() : __delay(n))
+#define udelay(n) ndelay((n) * NSEC_PER_USEC)
 
 #endif /* _ASM_WASM_DELAY_H */
