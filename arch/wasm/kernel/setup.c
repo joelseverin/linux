@@ -1,25 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <linux/init.h>
-#include <linux/screen_info.h>
 #include <linux/memblock.h>
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <asm/processor.h>
-
-/*
- * The format of "screen_info" is strange, and due to early
- * i386-setup code. This is just enough to make the console
- * code think we're on a VGA color display.
- */
-struct screen_info screen_info = {
-	.orig_x = 0,
-	.orig_y = 25,
-	.orig_video_cols = 80,
-	.orig_video_lines = 25,
-	.orig_video_isVGA = 1,
-	.orig_video_points = 16,
-};
 
 unsigned long memory_start;
 EXPORT_SYMBOL(memory_start);
