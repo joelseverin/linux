@@ -19,12 +19,6 @@ core-y += arch/wasm/mm/
 libs-y += arch/wasm/lib/
 drivers-y += arch/wasm/drivers/
 
-PHONY += bzImage
-
-all: bzImage
-
-bzImage: vmlinux
-
 define archhelp
-	echo  '* bzImage     - Compressed kernel image (arch/wasm/boot/bzImage)'
+	echo  '* vmlinux        - Standard Wasm kernel'
 endef
