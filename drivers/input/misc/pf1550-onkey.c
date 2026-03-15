@@ -130,7 +130,7 @@ static int pf1550_onkey_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int pf1550_onkey_suspend(struct device *dev)
+static int __maybe_unused pf1550_onkey_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct onkey_drv_data *onkey = platform_get_drvdata(pdev);
@@ -151,7 +151,7 @@ static int pf1550_onkey_suspend(struct device *dev)
 	return 0;
 }
 
-static int pf1550_onkey_resume(struct device *dev)
+static int __maybe_unused pf1550_onkey_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct onkey_drv_data *onkey = platform_get_drvdata(pdev);
