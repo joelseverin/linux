@@ -73,9 +73,5 @@ void __init setup_arch(char **cmdline_p)
 	min_low_pfn = PFN_DOWN(memory_start);
 	max_low_pfn = max_pfn;
 
-	/* Initialize zones, so that memory can be allocated beyond bootmem. */
-	max_zone_pfn[ZONE_NORMAL] = memory_end >> PAGE_SHIFT;
-	free_area_init(max_zone_pfn);
-
 	smp_init_cpus();
 }

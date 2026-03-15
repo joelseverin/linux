@@ -62,6 +62,7 @@ SECTIONS
 	BSS_SECTION(0, 0, 0)
 	_end = .;
 
+	MODINFO
 /*
 	Not supported by wasm-ld linker script hack:
 	STABS_DEBUG
