@@ -1320,7 +1320,7 @@ void skb_dump(const char *level, const struct sk_buff *skb, bool full_pkt)
 	       "priority=0x%x mark=0x%x alloc_cpu=%u vlan_all=0x%x\n"
 	       "encapsulation=%d inner(proto=0x%04x, mac=%u, net=%u, trans=%u)\n",
 	       level, skb->len, skb->data_len, headroom, skb_headlen(skb),
-	       tailroom, skb->end - skb->tail,
+	       tailroom, (unsigned int)(skb->end - skb->tail),
 	       has_mac ? skb->mac_header : -1,
 	       has_mac ? skb_mac_header_len(skb) : -1,
 	       skb->mac_len,
