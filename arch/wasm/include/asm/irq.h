@@ -8,4 +8,6 @@
 #define WASM_IRQ_IPI			0
 #define WASM_IRQ_TIMER			1
 
+#include <asm-generic/irq.h>
+
 #endif /* _ASM_WASM_IRQ_H */
