@@ -51,7 +51,11 @@ static void smp_init_cpus(void)
 
 void __init setup_arch(char **cmdline_p)
 {
-	unsigned long max_zone_pfn[MAX_NR_ZONES] = {0};
+	/*
+	 * For completeness: do nothing. These init_mm fields cannot be set as
+	 * they are used in other mm_struct:s for lazily loading code on Wasm.
+	 */
+	setup_initial_init_mm(NULL, NULL, NULL, NULL);
 
 	/* Save unparsed command line copy for /proc/cmdline */
 	*cmdline_p = boot_command_line;
@@ -67,6 +71,8 @@ void __init setup_arch(char **cmdline_p)
 
 	/* This is needed so that more than 128 allocations can be made. */
 	memblock_allow_resize();
+
+	memblock_dump_all();
 
 	/* These are needed by some code to know which pages are valid. */
 	max_pfn = PFN_DOWN(memory_end);
