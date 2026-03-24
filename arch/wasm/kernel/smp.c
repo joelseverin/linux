@@ -71,6 +71,10 @@ __visible void start_secondary(void)
 {
 	unsigned int cpu = smp_processor_id();
 
+	mmgrab(&init_mm);
+	current->active_mm = &init_mm;
+	BUG_ON(current->mm);
+
 	notify_cpu_starting(cpu);
 	set_cpu_online(cpu, true);
 
