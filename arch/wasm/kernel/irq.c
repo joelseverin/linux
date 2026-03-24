@@ -4,35 +4,14 @@
 #include <linux/irqchip.h>
 #include <asm/smp.h>
 
-static unsigned int wasm_irq_startup(struct irq_data *data)
-{
-	return 0;
-}
-
 static void wasm_irq_noop(struct irq_data *data)
 {
 }
 
-static int
-wasm_irq_set_affinity(struct irq_data *data, const struct cpumask *mask,
-		     bool force)
-{
-#ifdef CONFIG_SMP
-	printk("wasm_irq_set_affinity: %d %d %d", data->irq, cpumask_weight(mask), cpumask_first(mask));
-	return 0;
-#endif
-}
-
 struct irq_chip wasm_irq_chip = {
 	.name			= "wasm",
-	.irq_startup		= wasm_irq_startup,
-	.irq_shutdown		= wasm_irq_noop,
-	.irq_enable		= wasm_irq_noop,
-	.irq_disable		= wasm_irq_noop,
-	.irq_ack		= wasm_irq_noop,
 	.irq_mask		= wasm_irq_noop,
 	.irq_unmask		= wasm_irq_noop,
-	.irq_set_affinity	= wasm_irq_set_affinity,
 	.flags			= IRQCHIP_SKIP_SET_WAKE,
 };
 
