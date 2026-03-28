@@ -39,14 +39,3 @@ void (* const sys_call_table[__NR_syscalls])(void) = {
 	__SYSCALL(__NR_ftruncate64, sys_ftruncate64_fixup)
 #endif
 };
-
-/*
- * This is how we can tell the Wasm host what syscalls map to what numbers.
- *
- * Some syscalls numbers map to the same function (often ni_syscall) and in that
- * case we can't name the variable as the call due to name collision.
- */
-#define SYSCALL_ENUMERATOR(nr, call) const char __syscall_nr_##call##_##nr;
-#undef __SYSCALL
-#define __SYSCALL(nr, call) SYSCALL_ENUMERATOR(nr, call)
-#include <asm/unistd.h>
