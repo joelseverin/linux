@@ -18,3 +18,7 @@ obj-y += sys_wasm.o
 obj-y += syscall_table.o
 obj-y += time.o
 obj-y += traps.o
+
+ifndef CONFIG_64BIT
+obj-y += sys_wasm32.o
+endif

@@ -2,29 +2,8 @@
 
 #include <linux/syscalls.h>
 #include <asm-generic/syscalls.h>
+#include <asm/syscalls_wasm32.h>
 #include <asm/syscall.h>
-
-#ifndef CONFIG_64BIT
-/*
- * We should probably use some soft variant of CONFIG_COMPAT yet to be invented.
- * TODO: This hack should be replaced with proper selection of compat syscalls!
- */
-static long sys_truncate64_fixup(const char __user *pathname,
-				  unsigned long length_lo,
-				  unsigned long length_hi)
-{
-	return sys_truncate64(pathname,
-		((unsigned long long)length_hi << 32) | length_lo);
-}
-
-static long sys_ftruncate64_fixup(unsigned int fd,
-				  unsigned long length_lo,
-				  unsigned long length_hi)
-{
-	return sys_ftruncate64(fd,
-		((unsigned long long)length_hi << 32) | length_lo);
-}
-#endif
 
 void (* const sys_call_table[__NR_syscalls])(void) = {
 	[0 ... __NR_syscalls-1] = (void (*)(void))(void*)sys_ni_syscall,
@@ -35,7 +14,13 @@ void (* const sys_call_table[__NR_syscalls])(void) = {
 
 #ifndef CONFIG_64BIT
 	/* Overwrite! */
-	__SYSCALL(__NR_truncate64, sys_truncate64_fixup)
-	__SYSCALL(__NR_ftruncate64, sys_ftruncate64_fixup)
+	__SYSCALL(__NR_truncate64, sys_wasm32_truncate64)
+	__SYSCALL(__NR_ftruncate64, sys_wasm32_ftruncate64)
+	__SYSCALL(__NR_pread64, sys_wasm32_pread64)
+	__SYSCALL(__NR_pwrite64, sys_wasm32_pwrite64)
+	__SYSCALL(__NR_readahead, sys_wasm32_readahead)
+	__SYSCALL(__NR_fadvise64_64, sys_wasm32_fadvise64_64)
+	__SYSCALL(__NR_fallocate, sys_wasm32_fallocate)
+	__SYSCALL(__NR_sync_file_range, sys_wasm32_sync_file_range)
 #endif
 };
