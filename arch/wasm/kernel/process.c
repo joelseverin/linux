@@ -63,7 +63,8 @@ __switch_to(struct task_struct *prev_task, struct task_struct *next_task)
 		get_task_comm(name, next_task);
 
 		/* For user executables, we need to clone the Wasm instance. */
-		if (next_task->mm->start_code) {
+		if (next_task->mm) {
+			BUG_ON(!next_task->mm->start_code);
 			bin_start = next_task->mm->start_code;
 			bin_end = next_task->mm->end_code;
 			data_start = next_task->mm->start_data;
