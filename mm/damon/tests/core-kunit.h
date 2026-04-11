@@ -326,7 +326,8 @@ static void damon_test_split_regions_of(struct kunit *test)
 static void damon_test_ops_registration(struct kunit *test)
 {
 	struct damon_ctx *c = damon_new_ctx();
-	struct damon_operations ops = {.id = DAMON_OPS_VADDR}, bak;
+	struct damon_operations ops = {.id = DAMON_OPS_VADDR};
+	struct damon_operations_slot bak;
 	bool need_cleanup = false;
 
 	if (!c)
@@ -334,8 +335,7 @@ static void damon_test_ops_registration(struct kunit *test)
 
 	/* DAMON_OPS_VADDR is registered only if CONFIG_DAMON_VADDR is set */
 	if (!damon_is_registered_ops(DAMON_OPS_VADDR)) {
-		bak.id = DAMON_OPS_VADDR;
-		KUNIT_EXPECT_EQ(test, damon_register_ops(&bak), 0);
+		KUNIT_EXPECT_EQ(test, damon_register_ops(&ops), 0);
 		need_cleanup = true;
 	}
 
@@ -351,7 +351,7 @@ static void damon_test_ops_registration(struct kunit *test)
 	/* Registration should success after unregistration */
 	mutex_lock(&damon_ops_lock);
 	bak = damon_registered_ops[DAMON_OPS_VADDR];
-	damon_registered_ops[DAMON_OPS_VADDR] = (struct damon_operations){};
+	damon_registered_ops[DAMON_OPS_VADDR].registered = false;
 	mutex_unlock(&damon_ops_lock);
 
 	ops.id = DAMON_OPS_VADDR;
@@ -368,8 +368,7 @@ static void damon_test_ops_registration(struct kunit *test)
 
 	if (need_cleanup) {
 		mutex_lock(&damon_ops_lock);
-		damon_registered_ops[DAMON_OPS_VADDR] =
-			(struct damon_operations){};
+		damon_registered_ops[DAMON_OPS_VADDR].registered = false;
 		mutex_unlock(&damon_ops_lock);
 	}
 }
