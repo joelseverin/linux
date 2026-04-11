@@ -119,6 +119,9 @@ static void kunit_test_null_dereference(void *data)
 	struct kunit *test = data;
 	int *null = NULL;
 
+	if (!IS_ENABLED(CONFIG_MMU))
+		kunit_skip(test, "NULL-pointer dereference check requires MMU");
+
 	*null = 0;
 
 	KUNIT_FAIL(test, "This line should never be reached\n");
