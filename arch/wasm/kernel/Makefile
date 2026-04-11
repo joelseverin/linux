@@ -10,6 +10,7 @@ obj-y += irqflags.o
 obj-y += irq.o
 obj-y += process.o
 obj-y += ptrace.o
+obj-y += random.o
 obj-y += reboot.o
 obj-y += setup.o
 obj-y += signal.o

@@ -5,6 +5,7 @@
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <asm/processor.h>
+#include <asm/random.h>
 
 unsigned long memory_start;
 EXPORT_SYMBOL(memory_start);
@@ -80,4 +81,6 @@ void __init setup_arch(char **cmdline_p)
 	max_low_pfn = max_pfn;
 
 	smp_init_cpus();
+
+	setup_boot_rng();
 }
