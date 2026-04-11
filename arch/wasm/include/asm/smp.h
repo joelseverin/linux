@@ -19,6 +19,8 @@ static inline void arch_send_call_function_ipi_mask(const struct cpumask *mask)
 		arch_send_call_function_single_ipi(cpu);
 }
 
+void run_all_irqs(void);
+
 #endif /* !CONFIG_SMP */
 
 #endif /* _ASM_WASM_SMP_H */

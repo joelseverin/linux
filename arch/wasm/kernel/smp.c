@@ -231,6 +231,16 @@ void __init setup_smp_ipi(void)
 	enable_percpu_irq(WASM_IRQ_IPI, IRQ_TYPE_NONE);
 }
 
+static inline long long safe_now(void)
+{
+	unsigned long long now = wasm_cpu_clock_get_monotonic();
+
+	if (now > (unsigned long long)LLONG_MAX)
+		panic("time is too far into the future");
+
+	return (long long)now;
+}
+
 void arch_cpu_idle(void)
 {
 	/* Note: The idle task will not migrate so per_cpu state is stable. */
@@ -239,7 +249,7 @@ void arch_cpu_idle(void)
 	long long *expiry_ptr = this_cpu_ptr(&local_timer_expiries);
 	long long expiry;
 	long long timeout;
-	unsigned long long now;
+	long long now;
 	int irq_nr;
 
 	/*
@@ -270,13 +280,8 @@ void arch_cpu_idle(void)
 
 reprocess:
 		if (expiry > 0LL) {
-			now = wasm_cpu_clock_get_monotonic();
-
-			/* This will realistically never happen. */
-			if (now > (unsigned long long)LLONG_MAX)
-				panic("time is too far into the future");
-
-			if ((long long)now >= expiry)
+			now = safe_now();
+			if (now >= expiry)
 				timeout = 0LL;
 			else
 				timeout = expiry - now;
@@ -338,6 +343,51 @@ reprocess:
 	while (raised_irqs) {
 		if (raised_irqs & 1U)
 			do_irq_stacked(irq_nr);
+
+		raised_irqs >>= 1;
+		++irq_nr;
+	}
+}
+
+/*
+ * IRQ_CPU should be clear of tasks, but sometimes someone may schedule
+ * something. In severe cases (e.g. some KUnit tests that create thread pools on
+ * all online CPUs), it may become contended enough that the idle task does not
+ * run. These kthreads still play nice by never completely hogging the CPU, but
+ * since the idle thread never runs, IPIs are not properly delivered. This means
+ * the synchronization between the involved kthreads never progresses and the
+ * system becomes locked up. Timer interrupts also never happen which may cause
+ * additional problems.
+ *
+ * While arch_cpu_idle() handles the generic case (any cpu, runs as idle task),
+ * run_all_irqs() may only be called on IRQ_CPU with interrupts enabled but
+ * preemption disabled. The natural caller is thus in
+ * finish_arch_post_lock_switch(), which runs in the scheduler exit path after
+ * __switch_to(), with rq lock dropped and interrupts enabled.
+ */
+void run_all_irqs(void)
+{
+	unsigned int *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, IRQ_CPU);
+	long long *expiry_ptr = per_cpu_ptr(&local_timer_expiries, IRQ_CPU);
+	long long expiry = __atomic_load_n(expiry_ptr, __ATOMIC_SEQ_CST);
+	struct pt_regs *regs = current_pt_regs();
+	unsigned int raised_irqs;
+	int irq_nr;
+
+	if (expiry >= 0LL && safe_now() >= expiry) {
+		if (__atomic_compare_exchange_n(expiry_ptr, &expiry,
+						TIMER_NEVER_EXPIRE, false,
+						__ATOMIC_SEQ_CST,
+						__ATOMIC_SEQ_CST))
+			raise_interrupt(IRQ_CPU, WASM_IRQ_TIMER);
+	}
+
+	raised_irqs = __atomic_exchange_n(raised_irqs_ptr, 0U, __ATOMIC_SEQ_CST);
+
+	irq_nr = 0;
+	while (raised_irqs) {
+		if (raised_irqs & 1U)
+			do_irq(regs, irq_nr);
 
 		raised_irqs >>= 1;
 		++irq_nr;

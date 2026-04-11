@@ -135,7 +135,7 @@ int user_mode_tail(void)
 	return 0;
 }
 
-static void do_irq(struct pt_regs *regs, int irq_nr)
+static __always_inline void _do_irq(struct pt_regs *regs, int irq_nr)
 {
 	struct pt_regs *old_regs;
 	irqentry_state_t state = irqentry_enter(regs);
@@ -149,6 +149,11 @@ static void do_irq(struct pt_regs *regs, int irq_nr)
 	irqentry_exit(regs, state);
 }
 
+void do_irq(struct pt_regs *regs, int irq_nr)
+{
+	_do_irq(regs, irq_nr);
+}
+
 void do_irq_stacked(int irq_nr)
 {
 	/*
@@ -160,7 +165,7 @@ void do_irq_stacked(int irq_nr)
 	regs.stack_pointer = (unsigned long)&regs + sizeof(regs);
 	_exception_enter(&regs);
 
-	do_irq(&regs, irq_nr);
+	_do_irq(&regs, irq_nr);
 
 	_exception_exit(&regs);
 }
