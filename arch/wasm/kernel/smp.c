@@ -18,10 +18,11 @@ static DECLARE_COMPLETION(cpu_running);
 #if NR_IRQS > 64
 #error "NR_IRQS too high"
 #endif
-static DEFINE_PER_CPU(unsigned long long, raised_irqs);
+static DEFINE_PER_CPU(atomic64_t, raised_irqs);
 
-#define TIMER_NEVER_EXPIRE (-1)
-static DEFINE_PER_CPU(long long, local_timer_expiries) = TIMER_NEVER_EXPIRE;
+#define TIMER_NEVER_EXPIRE (-1LL)
+static DEFINE_PER_CPU(atomic64_t, local_timer_expiries) =
+					      ATOMIC64_INIT(TIMER_NEVER_EXPIRE);
 
 enum ipi_type {
 	IPI_RESCHEDULE			= 0,
@@ -29,8 +30,8 @@ enum ipi_type {
 	IPI_RECEIVE_BROADCAST		= 2,
 	IPI_IRQ_WORK			= 3,
 };
-#define IPI_MASK(ipi_type) ((unsigned int)(1U << (int)(ipi_type)))
-static DEFINE_PER_CPU(unsigned int, raised_ipis);
+#define IPI_MASK(ipi_type) (1U << (int)(ipi_type))
+static DEFINE_PER_CPU(atomic_t, raised_ipis);
 
 void smp_send_stop(void)
 {
@@ -105,19 +106,20 @@ __visible void raise_interrupt(int cpu, int irq_nr)
 	 *
 	 * per_cpu_ptr() is however safe to call (unlike e.g. this_cpu_ptr()).
 	 */
-	unsigned long long *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, cpu);
+	atomic64_t *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, cpu);
 
 	if (irq_nr >= NR_IRQS)
 		return;
 
-	__atomic_or_fetch(raised_irqs_ptr, 1ULL << irq_nr, __ATOMIC_SEQ_CST);
-	__builtin_wasm_memory_atomic_notify((unsigned int *)raised_irqs_ptr, 1U);
+	raw_atomic64_or((s64)1ULL << irq_nr, raised_irqs_ptr);
+	__builtin_wasm_memory_atomic_notify(
+		(unsigned int *)&raised_irqs_ptr->counter, 1U);
 }
 
 static void send_ipi_message(int cpu, enum ipi_type ipi)
 {
-	unsigned int *raised_ipis_ptr = per_cpu_ptr(&raised_ipis, cpu);
-	__atomic_or_fetch(raised_ipis_ptr, IPI_MASK(ipi), __ATOMIC_SEQ_CST);
+	atomic_t *raised_ipis_ptr = per_cpu_ptr(&raised_ipis, cpu);
+	atomic_or((int)IPI_MASK(ipi), raised_ipis_ptr);
 
 	raise_interrupt(cpu, WASM_IRQ_IPI);
 }
@@ -171,8 +173,8 @@ void wasm_program_timer(unsigned long delta)
 	unsigned long long now;
 	unsigned long long expiry = 0ULL;
 
-	unsigned long long *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
-	long long *expiry_ptr = this_cpu_ptr(&local_timer_expiries);
+	atomic64_t *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
+	atomic64_t *expiry_ptr = this_cpu_ptr(&local_timer_expiries);
 
 	if (delta == 0UL) {
 		/* Optimization: set expiry to 0 to immediately expire. */
@@ -189,20 +191,20 @@ void wasm_program_timer(unsigned long delta)
 			panic("clockevent expiry too large");
 	}
 
-	__atomic_store_n(expiry_ptr, (long long)expiry, __ATOMIC_SEQ_CST);
+	atomic64_set(expiry_ptr, (s64)expiry);
 
 	/*
 	 * We notify on raised_irqs since that's what we're waiting on in the
 	 * idle loop. It does not matter if it's still 0 - it will wake anyway.
 	 */
-	__builtin_wasm_memory_atomic_notify((unsigned int *)raised_irqs_ptr, 1U);
+	__builtin_wasm_memory_atomic_notify(
+		(unsigned int *)&raised_irqs_ptr->counter, 1U);
 }
 
 static irqreturn_t handle_IPI(int irq_nr, void *dev_id)
 {
-	unsigned int *ipi_mask_ptr = dev_id;
-	unsigned int ipi_mask = __atomic_exchange_n(ipi_mask_ptr, 0U,
-						    __ATOMIC_SEQ_CST);
+	atomic_t *ipi_mask_ptr = dev_id;
+	unsigned int ipi_mask = (unsigned int)atomic_xchg(ipi_mask_ptr, 0);
 
 	if (ipi_mask & IPI_MASK(IPI_RECEIVE_BROADCAST)) {
 		/* Useful in NO_HZ_FULL case where no task is running. */
@@ -244,10 +246,11 @@ static inline long long safe_now(void)
 void arch_cpu_idle(void)
 {
 	/* Note: The idle task will not migrate so per_cpu state is stable. */
-	unsigned long long *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
-	unsigned long long pending_irqs;
-	long long *expiry_ptr = this_cpu_ptr(&local_timer_expiries);
+	atomic64_t *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
+	u64 pending_irqs;
+	atomic64_t *expiry_ptr = this_cpu_ptr(&local_timer_expiries);
 	long long expiry;
+	long long old_expiry;
 	long long timeout;
 	long long now;
 	int irq_nr;
@@ -276,7 +279,7 @@ void arch_cpu_idle(void)
 	 * host. Callling schedule() here would just send us back, busy-waiting.
 	 */
 	for (;;) {
-		expiry = __atomic_load_n(expiry_ptr, __ATOMIC_SEQ_CST);
+		expiry = atomic64_read(expiry_ptr);
 
 reprocess:
 		if (expiry > 0LL) {
@@ -304,15 +307,11 @@ reprocess:
 			 */
 
 			/* Try resetting the timer to never expire. */
-			if (!__atomic_compare_exchange_n(expiry_ptr, &expiry,
-					TIMER_NEVER_EXPIRE, false,
-					__ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
-				/*
-				 * Expiry changed under our rug - re-process it.
-				 * This goto is slightly faster than "continue;"
-				 * as the compare-and-swap above will already
-				 * have loaded the new expiry value on failure.
-				*/
+			old_expiry = atomic64_cmpxchg(expiry_ptr, expiry,
+						      TIMER_NEVER_EXPIRE);
+			if (old_expiry != expiry) {
+				/* Expiry changed under our rug - re-process. */
+				expiry = old_expiry;
 				goto reprocess;
 			}
 
@@ -323,11 +322,10 @@ reprocess:
 		}
 
 		if (timeout != 0LL)
-			__builtin_wasm_memory_atomic_wait64(raised_irqs_ptr,
-							    0ULL, timeout);
+			__builtin_wasm_memory_atomic_wait64(
+				&raised_irqs_ptr->counter, 0ULL, timeout);
 
-		pending_irqs = __atomic_exchange_n(raised_irqs_ptr, 0ULL,
-						  __ATOMIC_SEQ_CST);
+		pending_irqs = (u64)atomic64_xchg(raised_irqs_ptr, 0LL);
 
 		/*
 		 * In the case of some raised_irqs, handle it, then we will come
@@ -367,23 +365,20 @@ reprocess:
  */
 void run_all_irqs(void)
 {
-	unsigned long long *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, IRQ_CPU);
-	long long *expiry_ptr = per_cpu_ptr(&local_timer_expiries, IRQ_CPU);
-	long long expiry = __atomic_load_n(expiry_ptr, __ATOMIC_SEQ_CST);
+	atomic64_t *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, IRQ_CPU);
+	atomic64_t *expiry_ptr = per_cpu_ptr(&local_timer_expiries, IRQ_CPU);
+	long long expiry = atomic64_read(expiry_ptr);
 	struct pt_regs *regs = current_pt_regs();
-	unsigned long long pending_irqs;
+	u64 pending_irqs;
 	int irq_nr;
 
 	if (expiry >= 0LL && safe_now() >= expiry) {
-		if (__atomic_compare_exchange_n(expiry_ptr, &expiry,
-						TIMER_NEVER_EXPIRE, false,
-						__ATOMIC_SEQ_CST,
-						__ATOMIC_SEQ_CST))
+		if (atomic64_cmpxchg(expiry_ptr, expiry, TIMER_NEVER_EXPIRE) ==
+									expiry)
 			raise_interrupt(IRQ_CPU, WASM_IRQ_TIMER);
 	}
 
-	pending_irqs = __atomic_exchange_n(raised_irqs_ptr,
-					  0ULL, __ATOMIC_SEQ_CST);
+	pending_irqs = (u64)atomic64_xchg(raised_irqs_ptr, 0LL);
 
 	irq_nr = 0;
 	while (pending_irqs) {
