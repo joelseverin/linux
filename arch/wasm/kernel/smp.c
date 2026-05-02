@@ -15,10 +15,10 @@ extern unsigned long long wasm_cpu_clock_get_monotonic(void);
 
 static DECLARE_COMPLETION(cpu_running);
 
-#if NR_IRQS > 32
+#if NR_IRQS > 64
 #error "NR_IRQS too high"
 #endif
-static DEFINE_PER_CPU(unsigned int, raised_irqs);
+static DEFINE_PER_CPU(unsigned long long, raised_irqs);
 
 #define TIMER_NEVER_EXPIRE (-1)
 static DEFINE_PER_CPU(long long, local_timer_expiries) = TIMER_NEVER_EXPIRE;
@@ -105,13 +105,13 @@ __visible void raise_interrupt(int cpu, int irq_nr)
 	 *
 	 * per_cpu_ptr() is however safe to call (unlike e.g. this_cpu_ptr()).
 	 */
-	unsigned int *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, cpu);
+	unsigned long long *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, cpu);
 
 	if (irq_nr >= NR_IRQS)
 		return;
 
-	__atomic_or_fetch(raised_irqs_ptr, 1U << irq_nr, __ATOMIC_SEQ_CST);
-	__builtin_wasm_memory_atomic_notify(raised_irqs_ptr, 1U);
+	__atomic_or_fetch(raised_irqs_ptr, 1ULL << irq_nr, __ATOMIC_SEQ_CST);
+	__builtin_wasm_memory_atomic_notify((unsigned int *)raised_irqs_ptr, 1U);
 }
 
 static void send_ipi_message(int cpu, enum ipi_type ipi)
@@ -171,7 +171,7 @@ void wasm_program_timer(unsigned long delta)
 	unsigned long long now;
 	unsigned long long expiry = 0ULL;
 
-	unsigned int *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
+	unsigned long long *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
 	long long *expiry_ptr = this_cpu_ptr(&local_timer_expiries);
 
 	if (delta == 0UL) {
@@ -195,7 +195,7 @@ void wasm_program_timer(unsigned long delta)
 	 * We notify on raised_irqs since that's what we're waiting on in the
 	 * idle loop. It does not matter if it's still 0 - it will wake anyway.
 	 */
-	__builtin_wasm_memory_atomic_notify(raised_irqs_ptr, 1U);
+	__builtin_wasm_memory_atomic_notify((unsigned int *)raised_irqs_ptr, 1U);
 }
 
 static irqreturn_t handle_IPI(int irq_nr, void *dev_id)
@@ -244,8 +244,8 @@ static inline long long safe_now(void)
 void arch_cpu_idle(void)
 {
 	/* Note: The idle task will not migrate so per_cpu state is stable. */
-	unsigned int *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
-	unsigned int raised_irqs;
+	unsigned long long *raised_irqs_ptr = this_cpu_ptr(&raised_irqs);
+	unsigned long long pending_irqs;
 	long long *expiry_ptr = this_cpu_ptr(&local_timer_expiries);
 	long long expiry;
 	long long timeout;
@@ -323,10 +323,10 @@ reprocess:
 		}
 
 		if (timeout != 0LL)
-			__builtin_wasm_memory_atomic_wait32(raised_irqs_ptr, 0U,
-							    timeout);
+			__builtin_wasm_memory_atomic_wait64(raised_irqs_ptr,
+							    0ULL, timeout);
 
-		raised_irqs = __atomic_exchange_n(raised_irqs_ptr, 0U,
+		pending_irqs = __atomic_exchange_n(raised_irqs_ptr, 0ULL,
 						  __ATOMIC_SEQ_CST);
 
 		/*
@@ -335,16 +335,16 @@ reprocess:
 		 * function retuns so that that idle framework can do its job,
 		 * for example if TIF_NEEDS_RESCHED is set by some IPI.
 		 */
-		if (raised_irqs)
+		if (pending_irqs)
 			break;
 	}
 
 	irq_nr = 0;
-	while (raised_irqs) {
-		if (raised_irqs & 1U)
+	while (pending_irqs) {
+		if (pending_irqs & 1ULL)
 			do_irq_stacked(irq_nr);
 
-		raised_irqs >>= 1;
+		pending_irqs >>= 1;
 		++irq_nr;
 	}
 }
@@ -367,11 +367,11 @@ reprocess:
  */
 void run_all_irqs(void)
 {
-	unsigned int *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, IRQ_CPU);
+	unsigned long long *raised_irqs_ptr = per_cpu_ptr(&raised_irqs, IRQ_CPU);
 	long long *expiry_ptr = per_cpu_ptr(&local_timer_expiries, IRQ_CPU);
 	long long expiry = __atomic_load_n(expiry_ptr, __ATOMIC_SEQ_CST);
 	struct pt_regs *regs = current_pt_regs();
-	unsigned int raised_irqs;
+	unsigned long long pending_irqs;
 	int irq_nr;
 
 	if (expiry >= 0LL && safe_now() >= expiry) {
@@ -382,14 +382,15 @@ void run_all_irqs(void)
 			raise_interrupt(IRQ_CPU, WASM_IRQ_TIMER);
 	}
 
-	raised_irqs = __atomic_exchange_n(raised_irqs_ptr, 0U, __ATOMIC_SEQ_CST);
+	pending_irqs = __atomic_exchange_n(raised_irqs_ptr,
+					  0ULL, __ATOMIC_SEQ_CST);
 
 	irq_nr = 0;
-	while (raised_irqs) {
-		if (raised_irqs & 1U)
+	while (pending_irqs) {
+		if (pending_irqs & 1ULL)
 			do_irq(regs, irq_nr);
 
-		raised_irqs >>= 1;
+		pending_irqs >>= 1;
 		++irq_nr;
 	}
 }
