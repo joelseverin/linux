@@ -6,8 +6,10 @@
 #include <linux/sched/debug.h>
 #include <linux/sched/task_stack.h>
 #include <linux/printk.h>
+#include <linux/init.h>
 #include <asm/cpuflags.h>
 #include <asm/entry.h>
+#include <asm/process.h>
 #include <asm/wasm.h>
 
 static cpumask_t user_cpus = CPU_MASK_NONE;
@@ -88,6 +90,14 @@ __switch_to(struct task_struct *prev_task, struct task_struct *next_task)
 	return last_task;
 }
 
+void __init wasm_user_cpus_init(void)
+{
+	BUG_ON(IRQ_CPU >= nr_cpu_ids);
+	BUG_ON(!cpu_possible(IRQ_CPU));
+
+	cpumask_set_cpu(IRQ_CPU, &user_cpus);
+}
+
 static int user_task_set_affinity(struct task_struct *p)
 {
 	/*
@@ -107,16 +117,9 @@ static int user_task_set_affinity(struct task_struct *p)
 	if (p->flags & PF_KTHREAD)
 		return 0;
 
-hack:
 	cpu = cpumask_first_zero(&user_cpus);
 	if (cpu >= nr_cpu_ids)
 		return -EBUSY;
-
-	if(cpu == IRQ_CPU) {
-		/* TODO: We should mark IRQ_CPU as taken at boot instead. */
-		cpumask_set_cpu(cpu, &user_cpus);
-		goto hack;
-	}
 
 	if (!cpu_online(cpu)) {
 		BUG_ON(!cpu_possible(cpu));

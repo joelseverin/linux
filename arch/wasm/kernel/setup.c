@@ -4,6 +4,7 @@
 #include <linux/memblock.h>
 #include <linux/module.h>
 #include <linux/mm.h>
+#include <asm/process.h>
 #include <asm/processor.h>
 #include <asm/random.h>
 
@@ -32,6 +33,8 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 
 	for_each_possible_cpu(i)
 		set_cpu_present(i, true);
+
+	wasm_user_cpus_init();
 }
 
 static void smp_init_cpus(void)
